@@ -4,43 +4,20 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, ThumbsUp } from 'lucide-react';
+import { MessageSquare, ThumbsUp, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Lightbulb } from 'lucide-react';
-
-const mockThreads = [
-  {
-    id: 1,
-    title: "Feeling overwhelmed with school work",
-    author: "User123",
-    replies: 12,
-    likes: 25,
-    tags: ["anxiety", "school", "stress"],
-    excerpt: "Lately I've been feeling so stressed about my exams and assignments. It feels like I'm drowning. Does anyone else feel this way or have tips?",
-  },
-  {
-    id: 2,
-    title: "How to make new friends in college?",
-    author: "SocialButterfly99",
-    replies: 8,
-    likes: 42,
-    tags: ["social", "college", "lonely"],
-    excerpt: "I just started college and I'm finding it hard to connect with people. It's a bit lonely. Any advice on making friends in a new place?",
-  },
-  {
-    id: 3,
-    title: "A small win today!",
-    author: "SunshineSeeker",
-    replies: 5,
-    likes: 18,
-    tags: ["positivity", "celebration", "happy"],
-    excerpt: "I wanted to share something good! I was feeling down this morning but I went for a walk and it really helped clear my head. Feeling much better now!",
-  }
-];
+import { fetchThreads, type Thread } from '@/lib/support-services';
+import { useToast } from '@/hooks/use-toast';
+import { CreateThreadForm } from '@/components/create-thread-form';
 
 export default function SupportPage() {
   const [userMood, setUserMood] = useState<string | null>(null);
+  const [threads, setThreads] = useState<Thread[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     try {
@@ -52,6 +29,26 @@ export default function SupportPage() {
         console.warn('Could not read mood from localStorage:', error);
     }
   }, []);
+  
+  useEffect(() => {
+    const loadThreads = async () => {
+        setIsLoading(true);
+        try {
+            const fetchedThreads = await fetchThreads();
+            setThreads(fetchedThreads);
+        } catch (error) {
+            console.error("Failed to fetch threads:", error);
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Could not load support threads. Please try again later.",
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    loadThreads();
+  }, [toast]);
 
   const moodSuggestions: Record<string, string> = {
     happy: "Share your positive vibes! What's making you smile today?",
@@ -63,10 +60,15 @@ export default function SupportPage() {
   };
 
   const filteredThreads = userMood
-    ? mockThreads.filter(thread => thread.tags.includes(userMood))
-    : mockThreads;
+    ? threads.filter(thread => thread.tags.includes(userMood))
+    : threads;
   
-  const displayThreads = filteredThreads.length > 0 ? filteredThreads : mockThreads;
+  const displayThreads = filteredThreads.length > 0 ? filteredThreads : threads;
+  
+  const handleThreadCreated = (newThread: Thread) => {
+    setThreads(prev => [newThread, ...prev]);
+    setIsFormOpen(false);
+  }
 
   return (
     <div className="space-y-8 animate-in fade-in-50">
@@ -75,8 +77,14 @@ export default function SupportPage() {
           <h1 className="font-headline text-3xl">Peer Support Community</h1>
           <p className="text-muted-foreground mt-1">Connect with others, share experiences, and find support. You are not alone.</p>
         </div>
-        <Button className="w-full sm:w-auto">Start a New Thread</Button>
+        <Button className="w-full sm:w-auto" onClick={() => setIsFormOpen(true)}>Start a New Thread</Button>
       </div>
+      
+      <CreateThreadForm 
+        isOpen={isFormOpen} 
+        onOpenChange={setIsFormOpen}
+        onThreadCreated={handleThreadCreated}
+      />
 
       {userMood && moodSuggestions[userMood] && (
         <Alert className="bg-accent/50 border-accent">
@@ -91,45 +99,52 @@ export default function SupportPage() {
       {userMood && filteredThreads.length > 0 && (
           <p className="text-sm text-muted-foreground">We've highlighted some threads based on your current mood.</p>
       )}
-
-      <div className="space-y-6">
-        {displayThreads.map((thread) => (
-          <Card key={thread.id} className="shadow-lg hover:shadow-xl transition-shadow">
-            <CardHeader>
-              <div className="flex flex-col-reverse sm:flex-row justify-between items-start gap-2">
-                <CardTitle className="mt-2 sm:mt-0">{thread.title}</CardTitle>
-                <div className="flex gap-2 self-start sm:self-center">
-                  {thread.tags.map(tag => (
-                    <Badge key={tag} variant={userMood === tag ? "default" : "secondary"}>{tag}</Badge>
-                  ))}
+      
+      {isLoading ? (
+        <div className="flex justify-center items-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="ml-4 text-muted-foreground">Loading community threads...</p>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {displayThreads.map((thread) => (
+            <Card key={thread.id} className="shadow-lg hover:shadow-xl transition-shadow">
+              <CardHeader>
+                <div className="flex flex-col-reverse sm:flex-row justify-between items-start gap-2">
+                  <CardTitle className="mt-2 sm:mt-0">{thread.title}</CardTitle>
+                  <div className="flex gap-2 self-start sm:self-center">
+                    {thread.tags.map(tag => (
+                      <Badge key={tag} variant={userMood === tag ? "default" : "secondary"}>{tag}</Badge>
+                    ))}
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground pt-2">
-                <Avatar className="h-6 w-6">
-                  <AvatarFallback>{thread.author.substring(0,2).toUpperCase()}</AvatarFallback>
-                </Avatar>
-                <span>Posted by {thread.author} (Anonymous)</span>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">{thread.excerpt}</p>
-            </CardContent>
-            <CardFooter className="flex justify-between items-center">
-              <div className="flex gap-6 text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4" />
-                  <span>{thread.replies} Replies</span>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground pt-2">
+                  <Avatar className="h-6 w-6">
+                    <AvatarFallback>{thread.author.substring(0,2).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <span>Posted by {thread.author} (Anonymous)</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <ThumbsUp className="h-4 w-4" />
-                  <span>{thread.likes} Likes</span>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground whitespace-pre-wrap">{thread.content}</p>
+              </CardContent>
+              <CardFooter className="flex justify-between items-center">
+                <div className="flex gap-6 text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4" />
+                    <span>{thread.replies} Replies</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <ThumbsUp className="h-4 w-4" />
+                    <span>{thread.likes} Likes</span>
+                  </div>
                 </div>
-              </div>
-              <Button variant="outline">View Thread</Button>
-            </CardFooter>
-          </Card>
-        ))}
-      </div>
+                <Button variant="outline">View Thread</Button>
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
