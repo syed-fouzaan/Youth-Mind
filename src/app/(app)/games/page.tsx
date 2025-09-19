@@ -234,6 +234,7 @@ const StarBlaster = () => {
             } else if (e.key === 'ArrowRight') {
                 setPlayerX(x => Math.min(95, x + 5));
             } else if (e.key === ' ') { // Space bar
+                e.preventDefault(); // Prevent scrolling
                 setProjectiles(p => [...p, { id: Date.now(), x: playerX, y: 90 }]);
             }
         };
@@ -247,49 +248,56 @@ const StarBlaster = () => {
     }, []);
 
     const gameTick = () => {
-        if (gameOver) {
-            if (gameLoopRef.current) clearInterval(gameLoopRef.current);
-            return;
-        }
-
-        // Move projectiles
-        setProjectiles(proj => proj.map(p => ({ ...p, y: p.y - 3 })).filter(p => p.y > 0));
-
-        // Move targets and check for game over
-        setTargets(t => {
-            const newTargets = t.map(target => ({ ...target, y: target.y + 1 }));
-            if (newTargets.some(target => target.y > 100)) {
-                setGameOver(true);
+        setGameOver(isOver => {
+            if (isOver) {
+                if (gameLoopRef.current) clearInterval(gameLoopRef.current);
+                return true;
             }
-            return newTargets.filter(target => target.y <= 100);
-        });
+            
+            let shouldEndGame = false;
 
-        // Spawn new targets
-        if (Math.random() < 0.03) {
-            setTargets(t => [...t, { id: Date.now(), x: Math.random() * 90 + 5, y: -5 }]);
-        }
+            // Move projectiles
+            setProjectiles(proj => proj.map(p => ({ ...p, y: p.y - 3 })).filter(p => p.y > 0));
 
-        // Collision detection
-        setProjectiles(currentProjectiles => {
-            const newProjectiles = [...currentProjectiles];
-            let hit = false;
-            setTargets(currentTargets => {
-                const newTargets = currentTargets.filter(target => {
-                    for (let i = newProjectiles.length - 1; i >= 0; i--) {
-                        const proj = newProjectiles[i];
-                        const distance = Math.sqrt(Math.pow(proj.x - target.x, 2) + Math.pow(proj.y - target.y, 2));
-                        if (distance < 5) { // Collision radius
-                            newProjectiles.splice(i, 1);
-                            setScore(s => s + 10);
-                            hit = true;
-                            return false; // Remove target
-                        }
-                    }
-                    return true; // Keep target
-                });
-                return newTargets;
+            // Move targets and check for game over
+            setTargets(t => {
+                const newTargets = t.map(target => ({ ...target, y: target.y + 1 }));
+                if (newTargets.some(target => target.y > 100)) {
+                    shouldEndGame = true;
+                }
+                return newTargets.filter(target => target.y <= 100);
             });
-            return newProjectiles;
+
+            // Spawn new targets
+            if (Math.random() < 0.03) {
+                setTargets(t => [...t, { id: Date.now(), x: Math.random() * 90 + 5, y: -5 }]);
+            }
+
+            // Collision detection
+            setProjectiles(currentProjectiles => {
+                const remainingProjectiles = [];
+                for (const proj of currentProjectiles) {
+                    let hit = false;
+                    setTargets(currentTargets => {
+                        const remainingTargets = currentTargets.filter(target => {
+                            const distance = Math.sqrt(Math.pow(proj.x - target.x, 2) + Math.pow(proj.y - target.y, 2));
+                            if (distance < 5) { // Collision radius
+                                setScore(s => s + 10);
+                                hit = true;
+                                return false; // Remove target
+                            }
+                            return true; // Keep target
+                        });
+                        return remainingTargets;
+                    });
+                    if (!hit) {
+                        remainingProjectiles.push(proj);
+                    }
+                }
+                return remainingProjectiles;
+            });
+            
+            return shouldEndGame;
         });
     };
 

@@ -37,7 +37,7 @@ Your task is to recommend a simple, calming game based on the user's current moo
 The available games are:
 - 'breathing': A guided breathing exercise. Good for moods like 'anxious', 'calm'.
 - 'gratitude': A gratitude wall exercise. Good for moods like 'sad', 'low'.
-- 'star-blaster': A shooter game to blast away stress orbs. Good for 'stressed', 'angry', 'frustrated'.
+- 'star-blaster': A space shooter game to blast away stress orbs. Good for 'stressed', 'angry', 'frustrated'.
 - 'emoji-catch': A game to catch positive emojis. Good for 'happy', 'neutral', 'bored'.
 
 Based on the user's mood, select one game ID and provide a title and a short, encouraging description for it in the specified language.
