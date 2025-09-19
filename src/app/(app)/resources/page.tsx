@@ -1,7 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { ArrowRight } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link';
 
 const mockResources = [
   {
@@ -47,29 +46,26 @@ export default function ResourcesPage() {
       </div>
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
         {mockResources.map((resource) => (
-          <Card key={resource.id} className="shadow-lg hover:shadow-xl transition-shadow flex flex-col">
-            <CardHeader>
-              <div className="aspect-video relative rounded-t-lg overflow-hidden -mt-6 -mx-6">
-                <Image
-                  src={resource.imageUrl}
-                  alt={resource.title}
-                  fill
-                  className="object-cover"
-                  data-ai-hint={resource.imageHint}
-                />
-              </div>
-              <CardTitle className="pt-4">{resource.title}</CardTitle>
-              <CardDescription>{resource.category}</CardDescription>
-            </CardHeader>
-            <CardContent className="flex-grow">
-              <p className="text-muted-foreground">{resource.excerpt}</p>
-            </CardContent>
-            <div className="p-6 pt-0">
-               <Button variant="outline" className="w-full sm:w-auto">
-                Read More <ArrowRight className="ml-2" />
-              </Button>
-            </div>
-          </Card>
+          <Link key={resource.id} href="/resources" className="block">
+            <Card className="shadow-lg hover:shadow-xl transition-shadow flex flex-col h-full">
+              <CardHeader>
+                <div className="aspect-video relative rounded-t-lg overflow-hidden -mt-6 -mx-6">
+                  <Image
+                    src={resource.imageUrl}
+                    alt={resource.title}
+                    fill
+                    className="object-cover"
+                    data-ai-hint={resource.imageHint}
+                  />
+                </div>
+                <CardTitle className="pt-4">{resource.title}</CardTitle>
+                <CardDescription>{resource.category}</CardDescription>
+              </CardHeader>
+              <CardContent className="flex-grow">
+                <p className="text-muted-foreground">{resource.excerpt}</p>
+              </CardContent>
+            </Card>
+          </Link>
         ))}
       </div>
     </div>
