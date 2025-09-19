@@ -8,10 +8,11 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, MessageCircle, Send } from 'lucide-react';
 import { counselorChat, type CounselorChatOutput } from '@/ai/flows/counselor-chat';
 import { Input } from '@/components/ui/input';
+import {type Message} from 'genkit';
 
 type ConversationEntry = {
-  speaker: 'user' | 'ai';
-  text: string;
+  role: 'user' | 'model';
+  content: { text: string }[];
 }
 
 export default function ChatPage() {
@@ -32,15 +33,16 @@ export default function ChatPage() {
   const handleSendMessage = async () => {
     if (inputText.trim() === '') return;
 
-    const userMessage: ConversationEntry = { speaker: 'user', text: inputText };
-    setConversation(prev => [...prev, userMessage]);
+    const userMessage: ConversationEntry = { role: 'user', content: [{text: inputText}] };
+    const newConversation = [...conversation, userMessage];
+    setConversation(newConversation);
     setInputText('');
     setIsLoading(true);
     
     try {
-      const response = await counselorChat({ text: userMessage.text, language: lang });
+      const response = await counselorChat({ text: userMessage.content[0].text, language: lang, history: conversation as Message[] });
       
-      const aiMessage: ConversationEntry = { speaker: 'ai', text: response.response };
+      const aiMessage: ConversationEntry = { role: 'model', content: [{text: response.response}] };
       setConversation(prev => [...prev, aiMessage]);
 
     } catch (error) {
@@ -74,9 +76,9 @@ export default function ChatPage() {
             <p className="text-muted-foreground text-center">Your conversation will appear here. Start by typing a message.</p>
           ) : (
             conversation.map((entry, index) => (
-              <div key={index} className={`flex ${entry.speaker === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`inline-block rounded-lg p-3 max-w-[80%] ${entry.speaker === 'user' ? 'bg-primary text-primary-foreground' : 'bg-card border'}`}>
-                  <p>{entry.text}</p>
+              <div key={index} className={`flex ${entry.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div className={`inline-block rounded-lg p-3 max-w-[80%] ${entry.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-card border'}`}>
+                  <p>{entry.content[0].text}</p>
                 </div>
               </div>
             ))

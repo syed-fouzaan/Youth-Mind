@@ -9,7 +9,13 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import {Message} from 'genkit';
 import wav from 'wav';
+
+const HistoryMessageSchema = z.object({
+  role: z.enum(['user', 'model']),
+  content: z.array(z.object({text: z.string()})),
+});
 
 const CounselorChatWithVoiceInputSchema = z.object({
   audioDataUri: z
@@ -18,24 +24,19 @@ const CounselorChatWithVoiceInputSchema = z.object({
       "A data URI of the user's voice recording. Must include a MIME type and use Base64 encoding. Expected format: 'data:audio/<format>;base64,<encoded_data>'."
     ),
   language: z.string().optional().describe('The user selected language.'),
+  history: z.array(HistoryMessageSchema).optional().describe('The conversation history.'),
 });
 export type CounselorChatWithVoiceInput = z.infer<typeof CounselorChatWithVoiceInputSchema>;
 
 const CounselorChatWithVoiceOutputSchema = z.object({
   responseText: z.string().describe('An empathetic and supportive response from the AI counselor.'),
-  responseAudioDataUri: z.string().describe('A data URI of the AI counselor\'s voice response.'),
+  responseAudioDataUri: z.string().describe("A data URI of the AI counselor's voice response."),
   userTranscript: z.string().describe("The transcript of the user's speech."),
   detectedTone: z.string().describe('The detected emotional tone from the user\'s voice (e.g., "upbeat", "somber", "anxious").'),
 });
 export type CounselorChatWithVoiceOutput = z.infer<typeof CounselorChatWithVoiceOutputSchema>;
 
-
-async function toWav(
-  pcmData: Buffer,
-  channels = 1,
-  rate = 24000,
-  sampleWidth = 2
-): Promise<string> {
+async function toWav(pcmData: Buffer, channels = 1, rate = 24000, sampleWidth = 2): Promise<string> {
   return new Promise((resolve, reject) => {
     const writer = new wav.Writer({
       channels,
@@ -63,14 +64,18 @@ export async function counselorChatWithVoice(input: CounselorChatWithVoiceInput)
 
 const textResponsePrompt = ai.definePrompt({
   name: 'counselorTextResponsePrompt',
-  input: {schema: z.object({
-    userTranscript: z.string(),
-    detectedTone: z.string(),
-    language: z.string().optional(),
-  })},
-  output: {schema: z.object({
+  input: {
+    schema: z.object({
+      userTranscript: z.string(),
+      detectedTone: z.string(),
+      language: z.string().optional(),
+    }),
+  },
+  output: {
+    schema: z.object({
       response: z.string().describe('An empathetic and supportive response from the AI counselor.'),
-  })},
+    }),
+  },
   prompt: `You are a highly skilled psychiatrist and an empathetic AI wellness companion for youth (ages 13–25). Your name is MindEaseAI.
 
   You are analyzing a user's voice input.
@@ -94,46 +99,49 @@ const counselorChatWithVoiceFlow = ai.defineFlow(
     inputSchema: CounselorChatWithVoiceInputSchema,
     outputSchema: CounselorChatWithVoiceOutputSchema,
   },
-  async (input) => {
-    // In a real application, you might use a dedicated voice-to-emotion model.
-    // Here, we use a powerful multimodal model (Gemini) to do both Speech-to-Text
-    // and voice tone analysis in a single call.
-
-    const { output: analysis } = await ai.generate({
+  async input => {
+    const {output: analysis} = await ai.generate({
       model: 'googleai/gemini-2.5-flash',
       prompt: [
-        { media: { url: input.audioDataUri } },
-        { text: 'Analyze the provided audio. First, transcribe the speech to text. Second, analyze the emotional tone of the voice (e.g., "upbeat", "somber", "anxious", "neutral").' },
+        {media: {url: input.audioDataUri}},
+        {
+          text: 'Analyze the provided audio. First, transcribe the speech to text. Second, analyze the emotional tone of the voice (e.g., "upbeat", "somber", "anxious", "neutral").',
+        },
       ],
       output: {
         schema: z.object({
           userTranscript: z.string().describe("The exact transcription of the user's speech."),
-          detectedTone: z.string().describe('The detected emotional tone of the speaker\'s voice.'),
+          detectedTone: z.string().describe("The detected emotional tone of the speaker's voice."),
         }),
       },
     });
 
     if (!analysis) {
-        throw new Error("Failed to analyze audio.");
+      throw new Error('Failed to analyze audio.');
     }
-    
-    const {output: textResponse} = await textResponsePrompt({
+
+    const {output: textResponse} = await textResponsePrompt(
+      {
         userTranscript: analysis.userTranscript,
         detectedTone: analysis.detectedTone,
-        language: input.language
-    });
+        language: input.language,
+      },
+      {
+        history: (input.history as Message<any>[]) || [],
+      }
+    );
 
     if (!textResponse) {
-        throw new Error("Failed to generate text response.");
+      throw new Error('Failed to generate text response.');
     }
 
-    const { media: audioMedia } = await ai.generate({
+    const {media: audioMedia} = await ai.generate({
       model: 'googleai/gemini-2.5-flash-preview-tts',
       config: {
         responseModalities: ['AUDIO'],
         speechConfig: {
           voiceConfig: {
-            prebuiltVoiceConfig: { voiceName: 'Algenib' },
+            prebuiltVoiceConfig: {voiceName: 'Algenib'},
           },
         },
       },
@@ -144,18 +152,15 @@ const counselorChatWithVoiceFlow = ai.defineFlow(
       throw new Error('no media returned from TTS model');
     }
 
-    const audioBuffer = Buffer.from(
-      audioMedia.url.substring(audioMedia.url.indexOf(',') + 1),
-      'base64'
-    );
+    const audioBuffer = Buffer.from(audioMedia.url.substring(audioMedia.url.indexOf(',') + 1), 'base64');
 
     const wavBase64 = await toWav(audioBuffer);
-    
+
     return {
-        responseText: textResponse.response,
-        responseAudioDataUri: 'data:audio/wav;base64,' + wavBase64,
-        userTranscript: analysis.userTranscript,
-        detectedTone: analysis.detectedTone,
+      responseText: textResponse.response,
+      responseAudioDataUri: 'data:audio/wav;base64,' + wavBase64,
+      userTranscript: analysis.userTranscript,
+      detectedTone: analysis.detectedTone,
     };
   }
 );

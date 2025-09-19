@@ -7,38 +7,45 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Sparkles, Mic, Square } from 'lucide-react';
 import { counselorChatWithVoice, type CounselorChatWithVoiceOutput } from '@/ai/flows/voice-counselor-chat';
+import {type Message} from 'genkit';
 
-type ConversationEntry = {
-  userInput: string;
-  detectedTone: string;
-  aiResponse: string;
-  audioDataUri?: string;
+
+type DisplayableMessage = {
+    role: 'user' | 'model';
+    text: string;
+    tone?: string;
 }
 
 export default function CounselorPage() {
   const [isLoading, setIsLoading] = useState(false);
-  const [conversation, setConversation] = useState<ConversationEntry[]>([]);
+  const [conversation, setConversation] = useState<DisplayableMessage[]>([]);
   const [isRecording, setIsRecording] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
+  const conversationEndRef = useRef<HTMLDivElement | null>(null);
 
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const lang = searchParams.get('lang') || 'en';
   
   useEffect(() => {
-    // Pre-create the audio element
     if (!audioPlayerRef.current) {
         audioPlayerRef.current = new Audio();
     }
   }, []);
 
+  useEffect(() => {
+    conversationEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [conversation]);
+
+
   const handleStartRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaRecorderRef.current = new MediaRecorder(stream);
+      audioChunksRef.current = [];
       mediaRecorderRef.current.ondataavailable = (event) => {
         audioChunksRef.current.push(event.data);
       };
@@ -73,16 +80,21 @@ export default function CounselorPage() {
       const base64Audio = reader.result as string;
       
       try {
-        const response = await counselorChatWithVoice({ audioDataUri: base64Audio, language: lang });
+        const history: Message[] = conversation.map(m => ({role: m.role, content: [{text: m.text}]}));
+
+        const response = await counselorChatWithVoice({ audioDataUri: base64Audio, language: lang, history });
         
-        const newEntry: ConversationEntry = {
-          userInput: response.userTranscript,
-          detectedTone: response.detectedTone,
-          aiResponse: response.responseText,
-          audioDataUri: response.responseAudioDataUri,
+        const userMessage: DisplayableMessage = {
+          role: 'user',
+          text: response.userTranscript,
+          tone: response.detectedTone,
+        };
+        const aiMessage: DisplayableMessage = {
+          role: 'model',
+          text: response.responseText,
         };
 
-        setConversation(prev => [...prev, newEntry]);
+        setConversation(prev => [...prev, userMessage, aiMessage]);
 
         if (audioPlayerRef.current && response.responseAudioDataUri) {
           audioPlayerRef.current.src = response.responseAudioDataUri;
@@ -121,19 +133,12 @@ export default function CounselorPage() {
                 <p className="text-muted-foreground text-center">Your conversation will appear here. Press the mic to start.</p>
               ) : (
                 conversation.map((entry, index) => (
-                  <div key={index} className="space-y-4">
-                    <div className="text-right">
-                       <div className="inline-block bg-primary text-primary-foreground rounded-lg p-3 max-w-[80%] text-left">
-                        <p>{entry.userInput}</p>
-                        <p className="text-xs opacity-80 mt-1">Tone: {entry.detectedTone}</p>
-                      </div>
+                    <div key={index} className={`flex ${entry.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`inline-block rounded-lg p-3 max-w-[80%] ${entry.role === 'user' ? 'bg-primary text-primary-foreground text-left' : 'bg-card border'}`}>
+                            <p>{entry.text}</p>
+                            {entry.role === 'user' && entry.tone && <p className="text-xs opacity-80 mt-1">Tone: {entry.tone}</p>}
+                        </div>
                     </div>
-                    <div>
-                       <p className="inline-block bg-card rounded-lg p-3 max-w-[80%] border">
-                        {entry.aiResponse}
-                      </p>
-                    </div>
-                  </div>
                 ))
               )}
                {isLoading && (
@@ -142,6 +147,7 @@ export default function CounselorPage() {
                     <p className="ml-2 text-muted-foreground">AI is thinking...</p>
                  </div>
                )}
+               <div ref={conversationEndRef} />
             </div>
             <div className="flex justify-center items-center gap-2">
               <Button onClick={isRecording ? handleStopRecording : handleStartRecording} disabled={isLoading} size="icon" className="h-16 w-16 rounded-full">

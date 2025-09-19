@@ -8,11 +8,21 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import {Message, Part} from 'genkit';
+import {z} from 'genkit/zod';
 
 const CounselorChatInputSchema = z.object({
   text: z.string().describe('The user input text.'),
   language: z.string().optional().describe('The user selected language.'),
+  history: z
+    .array(
+      z.object({
+        role: z.enum(['user', 'model']),
+        content: z.array(z.object({text: z.string()})),
+      })
+    )
+    .optional()
+    .describe('The conversation history.'),
 });
 export type CounselorChatInput = z.infer<typeof CounselorChatInputSchema>;
 
@@ -52,7 +62,9 @@ const counselorChatFlow = ai.defineFlow(
     outputSchema: CounselorChatOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
+    const {output} = await prompt(input, {
+      history: (input.history as Message<typeof CounselorChatInputSchema>[]) || [],
+    });
     return output!;
   }
 );
