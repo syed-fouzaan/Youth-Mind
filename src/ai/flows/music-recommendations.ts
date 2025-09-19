@@ -19,7 +19,10 @@ export type MusicRecommendationInput = z.infer<typeof MusicRecommendationInputSc
 const SongSchema = z.object({
   title: z.string().describe('The title of the song.'),
   artist: z.string().describe('The artist of the song.'),
-  url: z.string().url().describe('A direct link to listen to the song (e.g., on YouTube).'),
+  url: z
+    .string()
+    .regex(/^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/, 'Must be a valid YouTube URL.')
+    .describe('A direct link to listen to the song on YouTube.'),
 });
 
 const MusicRecommendationOutputSchema = z.object({
