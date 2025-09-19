@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Wand2, RefreshCw, Music } from 'lucide-react';
+import { Loader2, Wand2, RefreshCw, Music, Youtube } from 'lucide-react';
 import { detectMoodAndRespond, type MoodDetectionAndResponseOutput } from '@/ai/flows/mood-detection-and-response';
 import { personalizedRecommendations, type PersonalizedRecommendationsOutput } from '@/ai/flows/personalized-recommendations';
 import { getMusicRecommendation, type MusicRecommendationOutput } from '@/ai/flows/music-recommendations';
@@ -46,7 +46,7 @@ export default function HomePage() {
     try {
       const [moodResponse, recsResponse, musicResponse] = await Promise.all([
         detectMoodAndRespond({ text: moodText, language: lang }),
-        personalizedRecommendations({ mood }),
+        personalizedRecommendations({ mood, language: lang }),
         getMusicRecommendation({ mood, language: lang }),
       ]);
       
@@ -80,7 +80,7 @@ export default function HomePage() {
         setIsLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [lang]);
   
   return (
     <div className="space-y-8 animate-in fade-in-50">
@@ -146,14 +146,31 @@ export default function HomePage() {
         </Card>
       )}
 
-      {musicRecommendation && (
+      {musicRecommendation && musicRecommendation.recommendations.length > 0 && (
         <Card className="animate-in fade-in-50">
           <CardHeader className="flex flex-row items-center gap-4">
             <Music className="h-6 w-6 text-primary" />
             <CardTitle className="font-headline">Tune In To Your Mood</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="whitespace-pre-wrap leading-relaxed">{musicRecommendation.recommendation}</p>
+            <p className="whitespace-pre-wrap leading-relaxed mb-4">{musicRecommendation.intro}</p>
+            <div className="space-y-2">
+              {musicRecommendation.recommendations.map((song, index) => (
+                <a
+                  key={index}
+                  href={song.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted transition-colors"
+                >
+                  <Youtube className="h-5 w-5 text-red-600" />
+                  <div className="flex-1">
+                    <p className="font-semibold">{song.title}</p>
+                    <p className="text-sm text-muted-foreground">{song.artist}</p>
+                  </div>
+                </a>
+              ))}
+            </div>
           </CardContent>
         </Card>
       )}

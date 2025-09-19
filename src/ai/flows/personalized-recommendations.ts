@@ -13,9 +13,8 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const PersonalizedRecommendationsInputSchema = z.object({
-  mood: z
-    .string()
-    .describe('The current mood of the user.'),
+  mood: z.string().describe('The current mood of the user.'),
+  language: z.string().optional().describe('The user selected language.'),
 });
 export type PersonalizedRecommendationsInput = z.infer<typeof PersonalizedRecommendationsInputSchema>;
 
@@ -35,6 +34,7 @@ const prompt = ai.definePrompt({
   prompt: `You are MindEaseAI, an empathetic AI wellness companion for youth.
 
   Based on the user's mood, provide a personalized recommendation for a coping tip, mindfulness exercise, or creative prompt.
+  Respond in the user's specified language: {{{language}}}.
 
   User Mood: {{{mood}}}
   `,
