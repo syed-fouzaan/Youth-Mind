@@ -274,61 +274,58 @@ const StarBlaster = () => {
     }, [score]); // Rerun effect when score changes to update level logic in keydown
 
     const gameTick = () => {
-        setGameOver(isOver => {
-            if (isOver) {
-                if (gameLoopRef.current) clearInterval(gameLoopRef.current);
-                return true;
+        if (gameOver) {
+            if (gameLoopRef.current) clearInterval(gameLoopRef.current);
+            return;
+        }
+
+        let shouldEndGame = false;
+
+        // Move projectiles
+        setProjectiles(proj => proj.map(p => ({ ...p, y: p.y - 3 })).filter(p => p.y > 0));
+
+        // Move targets and check for game over
+        setTargets(t => {
+            const newTargets = t.map(target => ({ ...target, y: target.y + 0.5 }));
+            if (newTargets.some(target => target.y > 100)) {
+                shouldEndGame = true;
             }
-            
-            let shouldEndGame = false;
-
-            // Move projectiles
-            setProjectiles(proj => proj.map(p => ({ ...p, y: p.y - 3 })).filter(p => p.y > 0));
-
-            // Move targets and check for game over
-            setTargets(t => {
-                const newTargets = t.map(target => ({ ...target, y: target.y + 0.5 }));
-                if (newTargets.some(target => target.y > 100)) {
-                    shouldEndGame = true;
-                }
-                return newTargets.filter(target => target.y <= 100);
-            });
-
-            // Spawn new targets
-            if (Math.random() < 0.03) {
-                setTargets(t => [...t, { id: Date.now() + Math.random(), x: Math.random() * 90 + 5, y: -5 }]);
-            }
-
-            // Collision detection
-            setProjectiles(currentProjectiles => {
-                const remainingProjectiles = [];
-                for (const proj of currentProjectiles) {
-                    let hit = false;
-                    setTargets(currentTargets => {
-                        const remainingTargets = currentTargets.filter(target => {
-                            const distance = Math.sqrt(Math.pow(proj.x - target.x, 2) + Math.pow(proj.y - target.y, 2));
-                            if (distance < 5) { // Collision radius
-                                setScore(s => {
-                                    const newScore = s + 10;
-                                    setLevel(Math.floor(newScore / 100) + 1);
-                                    return newScore;
-                                });
-                                hit = true;
-                                return false; // Remove target
-                            }
-                            return true; // Keep target
-                        });
-                        return remainingTargets;
-                    });
-                    if (!hit) {
-                        remainingProjectiles.push(proj);
-                    }
-                }
-                return remainingProjectiles;
-            });
-            
-            return shouldEndGame;
+            return newTargets.filter(target => target.y <= 100);
         });
+
+        // Spawn new targets
+        if (Math.random() < 0.03) {
+            setTargets(t => [...t, { id: Date.now() + Math.random(), x: Math.random() * 90 + 5, y: -5 }]);
+        }
+
+        // Collision detection
+        let newScore = score;
+        const hitProjectiles = new Set<number>();
+        const hitTargets = new Set<number>();
+
+        projectiles.forEach(proj => {
+            targets.forEach(target => {
+                if (hitTargets.has(target.id) || hitProjectiles.has(proj.id)) return;
+
+                const distance = Math.sqrt(Math.pow(proj.x - target.x, 2) + Math.pow(proj.y - target.y, 2));
+                if (distance < 5) { // Collision radius
+                    hitProjectiles.add(proj.id);
+                    hitTargets.add(target.id);
+                    newScore += 10;
+                }
+            });
+        });
+
+        if (hitTargets.size > 0) {
+            setProjectiles(projs => projs.filter(p => !hitProjectiles.has(p.id)));
+            setTargets(targs => targs.filter(t => !hitTargets.has(t.id)));
+            setScore(newScore);
+            setLevel(Math.floor(newScore / 100) + 1);
+        }
+        
+        if (shouldEndGame) {
+            setGameOver(true);
+        }
     };
 
     if (gameOver) {
