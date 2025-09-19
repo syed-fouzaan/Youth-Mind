@@ -211,6 +211,7 @@ const EmojiCatch = () => {
 
 const StarBlaster = () => {
     const [score, setScore] = useState(0);
+    const [level, setLevel] = useState(1);
     const [gameOver, setGameOver] = useState(false);
     const [playerX, setPlayerX] = useState(50);
     const [projectiles, setProjectiles] = useState<{ id: number; x: number; y: number }[]>([]);
@@ -225,6 +226,7 @@ const StarBlaster = () => {
 
     const resetGame = () => {
         setScore(0);
+        setLevel(1);
         setProjectiles([]);
         setTargets([]);
         setGameOver(false);
@@ -242,7 +244,24 @@ const StarBlaster = () => {
                 setPlayerX(x => Math.min(95, x + 5));
             } else if (e.key === ' ') { // Space bar
                 e.preventDefault(); // Prevent scrolling
-                setProjectiles(p => [...p, { id: Date.now() + Math.random(), x: playerXRef.current, y: 90 }]);
+                setProjectiles(p => {
+                    const newProjectiles = [];
+                    const currentLevel = Math.floor(score / 100) + 1;
+                    if (currentLevel === 1) {
+                         newProjectiles.push({ id: Date.now() + Math.random(), x: playerXRef.current, y: 90 });
+                    } else if (currentLevel === 2) {
+                        newProjectiles.push({ id: Date.now() + Math.random(), x: playerXRef.current - 5, y: 90 });
+                        newProjectiles.push({ id: Date.now() + Math.random(), x: playerXRef.current, y: 90 });
+                        newProjectiles.push({ id: Date.now() + Math.random(), x: playerXRef.current + 5, y: 90 });
+                    } else { // Level 3+
+                        newProjectiles.push({ id: Date.now() + Math.random(), x: playerXRef.current - 10, y: 90 });
+                        newProjectiles.push({ id: Date.now() + Math.random(), x: playerXRef.current - 5, y: 90 });
+                        newProjectiles.push({ id: Date.now() + Math.random(), x: playerXRef.current, y: 90 });
+                        newProjectiles.push({ id: Date.now() + Math.random(), x: playerXRef.current + 5, y: 90 });
+                        newProjectiles.push({ id: Date.now() + Math.random(), x: playerXRef.current + 10, y: 90 });
+                    }
+                    return [...p, ...newProjectiles];
+                });
             }
         };
 
@@ -252,7 +271,7 @@ const StarBlaster = () => {
             if (gameLoopRef.current) clearInterval(gameLoopRef.current);
             window.removeEventListener('keydown', handleKeyDown);
         };
-    }, []);
+    }, [score]); // Rerun effect when score changes to update level logic in keydown
 
     const gameTick = () => {
         setGameOver(isOver => {
@@ -289,7 +308,11 @@ const StarBlaster = () => {
                         const remainingTargets = currentTargets.filter(target => {
                             const distance = Math.sqrt(Math.pow(proj.x - target.x, 2) + Math.pow(proj.y - target.y, 2));
                             if (distance < 5) { // Collision radius
-                                setScore(s => s + 10);
+                                setScore(s => {
+                                    const newScore = s + 10;
+                                    setLevel(Math.floor(newScore / 100) + 1);
+                                    return newScore;
+                                });
                                 hit = true;
                                 return false; // Remove target
                             }
@@ -321,7 +344,7 @@ const StarBlaster = () => {
     return (
         <div className="flex flex-col items-center justify-center p-4 text-center bg-indigo-100 dark:bg-indigo-900/50 rounded-lg">
             <h3 className="text-2xl font-bold text-indigo-800 dark:text-indigo-200">Star Blaster</h3>
-            <p className="text-indigo-600 dark:text-indigo-300 mb-2">Score: {score} | Use Arrow Keys & Spacebar</p>
+            <p className="text-indigo-600 dark:text-indigo-300 mb-2">Score: {score} | Level: {level} | Use Arrow Keys & Spacebar</p>
             <div ref={gameAreaRef} className="relative w-full h-[400px] bg-gray-800 dark:bg-black rounded-md overflow-hidden cursor-none">
                 {/* Player */}
                 <div className="absolute bottom-0 w-10 h-5 bg-indigo-400 rounded-t-md" style={{ left: `${playerX}%`, transform: 'translateX(-50%)' }}></div>
