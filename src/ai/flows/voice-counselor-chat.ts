@@ -1,6 +1,6 @@
 'use server';
 /**
- * @fileOverview Provides a conversational AI counselor that analyzes voice.
+ * @fileOverview Provides a conversational AI counselor that analyzes voice and responds with voice.
  *
  * - counselorChatWithVoice - A function that handles voice-based chat.
  * - CounselorChatWithVoiceInput - The input type for the function.
@@ -9,6 +9,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import wav from 'wav';
 
 const CounselorChatWithVoiceInputSchema = z.object({
   audioDataUri: z
@@ -21,24 +22,55 @@ const CounselorChatWithVoiceInputSchema = z.object({
 export type CounselorChatWithVoiceInput = z.infer<typeof CounselorChatWithVoiceInputSchema>;
 
 const CounselorChatWithVoiceOutputSchema = z.object({
-  response: z.string().describe('An empathetic and supportive response from the AI counselor.'),
+  responseText: z.string().describe('An empathetic and supportive response from the AI counselor.'),
+  responseAudioDataUri: z.string().describe('A data URI of the AI counselor\'s voice response.'),
   userTranscript: z.string().describe("The transcript of the user's speech."),
   detectedTone: z.string().describe('The detected emotional tone from the user\'s voice (e.g., "upbeat", "somber", "anxious").'),
 });
 export type CounselorChatWithVoiceOutput = z.infer<typeof CounselorChatWithVoiceOutputSchema>;
 
+
+async function toWav(
+  pcmData: Buffer,
+  channels = 1,
+  rate = 24000,
+  sampleWidth = 2
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const writer = new wav.Writer({
+      channels,
+      sampleRate: rate,
+      bitDepth: sampleWidth * 8,
+    });
+
+    let bufs = [] as any[];
+    writer.on('error', reject);
+    writer.on('data', function (d) {
+      bufs.push(d);
+    });
+    writer.on('end', function () {
+      resolve(Buffer.concat(bufs).toString('base64'));
+    });
+
+    writer.write(pcmData);
+    writer.end();
+  });
+}
+
 export async function counselorChatWithVoice(input: CounselorChatWithVoiceInput): Promise<CounselorChatWithVoiceOutput> {
   return counselorChatWithVoiceFlow(input);
 }
 
-const prompt = ai.definePrompt({
-  name: 'counselorChatWithVoicePrompt',
+const textResponsePrompt = ai.definePrompt({
+  name: 'counselorTextResponsePrompt',
   input: {schema: z.object({
     userTranscript: z.string(),
     detectedTone: z.string(),
     language: z.string().optional(),
   })},
-  output: {schema: CounselorChatWithVoiceOutputSchema},
+  output: {schema: z.object({
+      response: z.string().describe('An empathetic and supportive response from the AI counselor.'),
+  })},
   prompt: `You are a highly skilled psychiatrist and an empathetic AI wellness companion for youth (ages 13–25). Your name is MindEaseAI.
 
   You are analyzing a user's voice input.
@@ -85,12 +117,45 @@ const counselorChatWithVoiceFlow = ai.defineFlow(
         throw new Error("Failed to analyze audio.");
     }
     
-    const {output: counselorResponse} = await prompt({
+    const {output: textResponse} = await textResponsePrompt({
         userTranscript: analysis.userTranscript,
         detectedTone: analysis.detectedTone,
         language: input.language
     });
+
+    if (!textResponse) {
+        throw new Error("Failed to generate text response.");
+    }
+
+    const { media: audioMedia } = await ai.generate({
+      model: 'googleai/gemini-2.5-flash-preview-tts',
+      config: {
+        responseModalities: ['AUDIO'],
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: { voiceName: 'Algenib' },
+          },
+        },
+      },
+      prompt: textResponse.response,
+    });
+
+    if (!audioMedia) {
+      throw new Error('no media returned from TTS model');
+    }
+
+    const audioBuffer = Buffer.from(
+      audioMedia.url.substring(audioMedia.url.indexOf(',') + 1),
+      'base64'
+    );
+
+    const wavBase64 = await toWav(audioBuffer);
     
-    return counselorResponse!;
+    return {
+        responseText: textResponse.response,
+        responseAudioDataUri: 'data:audio/wav;base64,' + wavBase64,
+        userTranscript: analysis.userTranscript,
+        detectedTone: analysis.detectedTone,
+    };
   }
 );

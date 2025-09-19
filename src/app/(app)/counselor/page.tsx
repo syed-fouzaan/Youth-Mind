@@ -1,18 +1,18 @@
 "use client";
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Send, Sparkles, Mic, Square } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { Loader2, Sparkles, Mic, Square } from 'lucide-react';
 import { counselorChatWithVoice, type CounselorChatWithVoiceOutput } from '@/ai/flows/voice-counselor-chat';
 
 type ConversationEntry = {
   userInput: string;
   detectedTone: string;
   aiResponse: string;
+  audioDataUri?: string;
 }
 
 export default function CounselorPage() {
@@ -22,10 +22,18 @@ export default function CounselorPage() {
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
 
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const lang = searchParams.get('lang') || 'en';
+  
+  useEffect(() => {
+    // Pre-create the audio element
+    if (!audioPlayerRef.current) {
+        audioPlayerRef.current = new Audio();
+    }
+  }, []);
 
   const handleStartRecording = async () => {
     try {
@@ -65,12 +73,22 @@ export default function CounselorPage() {
       const base64Audio = reader.result as string;
       
       try {
-        const response: CounselorChatWithVoiceOutput = await counselorChatWithVoice({ audioDataUri: base64Audio, language: lang });
-        setConversation(prev => [...prev, {
+        const response = await counselorChatWithVoice({ audioDataUri: base64Audio, language: lang });
+        
+        const newEntry: ConversationEntry = {
           userInput: response.userTranscript,
           detectedTone: response.detectedTone,
-          aiResponse: response.response,
-        }]);
+          aiResponse: response.responseText,
+          audioDataUri: response.responseAudioDataUri,
+        };
+
+        setConversation(prev => [...prev, newEntry]);
+
+        if (audioPlayerRef.current && response.responseAudioDataUri) {
+          audioPlayerRef.current.src = response.responseAudioDataUri;
+          audioPlayerRef.current.play();
+        }
+
       } catch (error) {
         console.error(error);
         toast({
@@ -93,7 +111,7 @@ export default function CounselorPage() {
             AI Counselor
           </CardTitle>
           <CardDescription>
-            Talk through your feelings with an AI companion trained to listen and provide supportive guidance. This is a safe space for you.
+            Talk through your feelings with an AI companion that listens and responds with its voice. This is a safe space for you.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
