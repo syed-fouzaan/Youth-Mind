@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Gamepad2, Lightbulb, Bomb } from 'lucide-react';
+import { Loader2, Gamepad2, Lightbulb, Bomb, Smile, Frown } from 'lucide-react';
 import { getGameSuggestion, type GameSuggestionOutput } from '@/ai/flows/game-suggestion';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
@@ -143,6 +143,112 @@ const StressSmash = () => {
 };
 
 
+const EmojiCatch = () => {
+  const [score, setScore] = useState(0);
+  const [gameOver, setGameOver] = useState(false);
+  const [emojis, setEmojis] = useState<{ id: number; x: number; y: number; type: 'positive' | 'negative'; char: string }[]>([]);
+  const [catcherX, setCatcherX] = useState(50);
+  const gameAreaRef = useRef<HTMLDivElement>(null);
+  const gameLoopRef = useRef<number>();
+
+  const positiveEmojis = ['😊', '😂', '😍', '🥳', '🤩'];
+  const negativeEmojis = ['😡', '😭', '🤢', '💀', '👿'];
+
+  const resetGame = () => {
+    setScore(0);
+    setEmojis([]);
+    setGameOver(false);
+    gameLoopRef.current = setInterval(gameTick, 1000 / 60);
+  };
+
+  useEffect(() => {
+    resetGame();
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (gameAreaRef.current) {
+        const rect = gameAreaRef.current.getBoundingClientRect();
+        const newX = ((e.clientX - rect.left) / rect.width) * 100;
+        setCatcherX(Math.max(5, Math.min(95, newX)));
+      }
+    };
+    
+    window.addEventListener('mousemove', handleMouseMove);
+
+    return () => {
+      clearInterval(gameLoopRef.current);
+      window.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, []);
+
+  const gameTick = () => {
+    if (gameOver) {
+        clearInterval(gameLoopRef.current);
+        return;
+    }
+    // Create new emojis
+    if (Math.random() < 0.05) {
+      const type = Math.random() > 0.3 ? 'positive' : 'negative';
+      setEmojis(prev => [
+        ...prev,
+        {
+          id: Date.now(),
+          x: Math.random() * 90 + 5,
+          y: -5,
+          type,
+          char: type === 'positive'
+              ? positiveEmojis[Math.floor(Math.random() * positiveEmojis.length)]
+              : negativeEmojis[Math.floor(Math.random() * negativeEmojis.length)],
+        },
+      ]);
+    }
+
+    // Move emojis and check for collisions
+    setEmojis(prev =>
+      prev.map(emoji => ({ ...emoji, y: emoji.y + 2 }))
+        .filter(emoji => {
+          const catcherRect = { left: catcherX - 5, right: catcherX + 5, top: 85, bottom: 95 };
+          const emojiRect = { left: emoji.x - 2.5, right: emoji.x + 2.5, top: emoji.y - 5, bottom: emoji.y + 5 };
+
+          if (emojiRect.bottom > catcherRect.top && emojiRect.top < catcherRect.bottom && emojiRect.right > catcherRect.left && emojiRect.left < catcherRect.right) {
+            if (emoji.type === 'positive') {
+              setScore(s => s + 10);
+            } else {
+              setGameOver(true);
+            }
+            return false;
+          }
+          return emoji.y < 100;
+        })
+    );
+  };
+  
+  if (gameOver) {
+      return (
+        <div className="flex flex-col items-center justify-center p-8 text-center bg-green-100 dark:bg-green-900/50 rounded-lg h-[400px]">
+            <h3 className="text-2xl font-bold text-green-800 dark:text-green-200">Game Over!</h3>
+            <p className="text-xl my-4">Your score: <span className="font-bold">{score}</span></p>
+            <Button onClick={resetGame}>Play Again</Button>
+        </div>
+      )
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center p-4 text-center bg-green-100 dark:bg-green-900/50 rounded-lg">
+      <h3 className="text-2xl font-bold text-green-800 dark:text-green-200">Emoji Catch</h3>
+      <p className="text-green-600 dark:text-green-300 mb-2">Catch the good vibes! Score: {score}</p>
+      <div ref={gameAreaRef} className="relative w-full h-[400px] bg-green-200 dark:bg-green-800/50 rounded-md overflow-hidden cursor-none">
+        {emojis.map(emoji => (
+          <div key={emoji.id} className="absolute text-4xl" style={{ left: `${emoji.x}%`, top: `${emoji.y}%`, transform: 'translateX(-50%)' }}>
+            {emoji.char}
+          </div>
+        ))}
+        <div className="absolute bottom-0 w-20 h-10 bg-green-500 dark:bg-green-600 rounded-t-lg" style={{ left: `${catcherX}%`, transform: 'translateX(-50%)' }}></div>
+      </div>
+    </div>
+  );
+};
+
+
 export default function GamesPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [suggestion, setSuggestion] = useState<GameSuggestionOutput | null>(null);
@@ -191,6 +297,8 @@ export default function GamesPage() {
         return <GratitudeWall />;
       case 'stress-smash':
         return <StressSmash />;
+      case 'emoji-catch':
+        return <EmojiCatch />;
       default:
         return null;
     }
