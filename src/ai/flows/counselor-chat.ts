@@ -8,8 +8,8 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {Message, Part} from 'genkit';
-import {z} from 'genkit/zod';
+import {Message} from 'genkit';
+import {z} from 'genkit';
 
 const CounselorChatInputSchema = z.object({
   text: z.string().describe('The user input text.'),

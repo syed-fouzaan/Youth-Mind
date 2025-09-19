@@ -105,7 +105,7 @@ const counselorChatWithVoiceFlow = ai.defineFlow(
       prompt: [
         {media: {url: input.audioDataUri}},
         {
-          text: 'Analyze the provided audio. First, transcribe the speech to text. Second, analyze the emotional tone of the voice (e.g., "upbeat", "somber", "anxious", "neutral").',
+          text: 'Analyze the provided audio. First, transcribe the speech to text. Second, analyze the emotional tone of the voice (e.g., "upbeat", "somber", "anxious", "neutral"). Respond in JSON.',
         },
       ],
       output: {
