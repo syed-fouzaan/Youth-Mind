@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
@@ -235,7 +236,7 @@ const StarBlaster = () => {
                 setPlayerX(x => Math.min(95, x + 5));
             } else if (e.key === ' ') { // Space bar
                 e.preventDefault(); // Prevent scrolling
-                setProjectiles(p => [...p, { id: Date.now(), x: playerX, y: 90 }]);
+                setProjectiles(p => [...p, { id: Date.now() + Math.random(), x: playerX, y: 90 }]);
             }
         };
 
@@ -270,7 +271,7 @@ const StarBlaster = () => {
 
             // Spawn new targets
             if (Math.random() < 0.03) {
-                setTargets(t => [...t, { id: Date.now(), x: Math.random() * 90 + 5, y: -5 }]);
+                setTargets(t => [...t, { id: Date.now() + Math.random(), x: Math.random() * 90 + 5, y: -5 }]);
             }
 
             // Collision detection
