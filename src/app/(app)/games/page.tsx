@@ -142,43 +142,49 @@ const EmojiCatch = () => {
             return true;
         }
 
-        // Create new emojis
-        if (Math.random() < 0.05) {
-          const type = Math.random() > 0.3 ? 'positive' : 'negative';
-          setEmojis(prev => [
-            ...prev,
-            {
-              id: Date.now() + Math.random(),
-              x: Math.random() * 90 + 5,
-              y: -5,
-              type,
-              char: type === 'positive'
-                  ? positiveEmojis[Math.floor(Math.random() * positiveEmojis.length)]
-                  : negativeEmojis[Math.floor(Math.random() * negativeEmojis.length)],
-            },
-          ]);
-        }
-
-        // Move emojis and check for collisions
         let isGameOver = false;
-        setEmojis(prev =>
-          prev.map(emoji => ({ ...emoji, y: emoji.y + 2 }))
-            .filter(emoji => {
-              const catcherRect = { left: catcherX - 5, right: catcherX + 5, top: 85, bottom: 95 };
-              const emojiRect = { left: emoji.x - 2.5, right: emoji.x + 2.5, top: emoji.y - 5, bottom: emoji.y + 5 };
 
-              if (emojiRect.bottom > catcherRect.top && emojiRect.top < catcherRect.bottom && emojiRect.right > catcherRect.left && emojiRect.left < catcherRect.right) {
-                if (emoji.type === 'positive') {
-                  setScore(s => s + 10);
-                } else {
-                  isGameOver = true;
-                }
-                return false;
-              }
-              return emoji.y < 100;
-            })
-        );
-        return isGameOver;
+        setEmojis(prev => {
+            // Create new emojis
+            let newEmojis = [...prev];
+            if (Math.random() < 0.05) {
+                const type = Math.random() > 0.3 ? 'positive' : 'negative';
+                newEmojis.push({
+                    id: Date.now() + Math.random(),
+                    x: Math.random() * 90 + 5,
+                    y: -5,
+                    type,
+                    char: type === 'positive'
+                        ? positiveEmojis[Math.floor(Math.random() * positiveEmojis.length)]
+                        : negativeEmojis[Math.floor(Math.random() * negativeEmojis.length)],
+                });
+            }
+
+            // Move emojis and check for collisions
+            newEmojis = newEmojis
+                .map(emoji => ({ ...emoji, y: emoji.y + 2 }))
+                .filter(emoji => {
+                    const catcherRect = { left: catcherX - 5, right: catcherX + 5, top: 85, bottom: 95 };
+                    const emojiRect = { left: emoji.x - 2.5, right: emoji.x + 2.5, top: emoji.y - 5, bottom: emoji.y + 5 };
+
+                    if (emojiRect.bottom > catcherRect.top && emojiRect.top < catcherRect.bottom && emojiRect.right > catcherRect.left && emojiRect.left < catcherRect.right) {
+                        if (emoji.type === 'positive') {
+                            setScore(s => s + 10);
+                        } else {
+                            isGameOver = true;
+                        }
+                        return false; // remove emoji
+                    }
+                    return emoji.y < 100; // keep emoji if it's on screen
+                });
+            
+            if (isGameOver) {
+                setGameOver(true);
+            }
+            return newEmojis;
+        });
+
+        return isOver;
     });
   };
   
@@ -238,31 +244,30 @@ const StarBlaster = () => {
         resetGame();
 
         const handleKeyDown = (e: KeyboardEvent) => {
-            if (gameOver) return;
             if (e.key === 'ArrowLeft') {
                 setPlayerX(x => Math.max(5, x - 5));
             } else if (e.key === 'ArrowRight') {
                 setPlayerX(x => Math.min(95, x + 5));
             } else if (e.key === ' ') { // Space bar
                 e.preventDefault(); // Prevent scrolling
-                setProjectiles(p => {
-                    const newProjectiles = [];
-                    const currentLevel = Math.floor(score / 100) + 1;
-                    if (currentLevel === 1) {
-                         newProjectiles.push({ id: Date.now() + Math.random(), x: playerXRef.current, y: 90 });
-                    } else if (currentLevel === 2) {
-                        newProjectiles.push({ id: Date.now() + Math.random(), x: playerXRef.current - 5, y: 90 });
-                        newProjectiles.push({ id: Date.now() + Math.random(), x: playerXRef.current, y: 90 });
-                        newProjectiles.push({ id: Date.now() + Math.random(), x: playerXRef.current + 5, y: 90 });
-                    } else { // Level 3+
-                        newProjectiles.push({ id: Date.now() + Math.random(), x: playerXRef.current - 10, y: 90 });
-                        newProjectiles.push({ id: Date.now() + Math.random(), x: playerXRef.current - 5, y: 90 });
-                        newProjectiles.push({ id: Date.now() + Math.random(), x: playerXRef.current, y: 90 });
-                        newProjectiles.push({ id: Date.now() + Math.random(), x: playerXRef.current + 5, y: 90 });
-                        newProjectiles.push({ id: Date.now() + Math.random(), x: playerXRef.current + 10, y: 90 });
-                    }
-                    return [...p, ...newProjectiles];
-                });
+                
+                const currentLevel = Math.floor(score / 100) + 1;
+                let newProjectiles = [];
+
+                if (currentLevel === 1) {
+                    newProjectiles.push({ id: Date.now() + Math.random(), x: playerXRef.current, y: 90 });
+                } else if (currentLevel === 2) {
+                    newProjectiles.push({ id: Date.now() + Math.random(), x: playerXRef.current - 5, y: 90 });
+                    newProjectiles.push({ id: Date.now() + Math.random(), x: playerXRef.current, y: 90 });
+                    newProjectiles.push({ id: Date.now() + Math.random(), x: playerXRef.current + 5, y: 90 });
+                } else { // Level 3+
+                    newProjectiles.push({ id: Date.now() + Math.random(), x: playerXRef.current - 10, y: 90 });
+                    newProjectiles.push({ id: Date.now() + Math.random(), x: playerXRef.current - 5, y: 90 });
+                    newProjectiles.push({ id: Date.now() + Math.random(), x: playerXRef.current, y: 90 });
+                    newProjectiles.push({ id: Date.now() + Math.random(), x: playerXRef.current + 5, y: 90 });
+                    newProjectiles.push({ id: Date.now() + Math.random(), x: playerXRef.current + 10, y: 90 });
+                }
+                setProjectiles(p => [...p, ...newProjectiles]);
             }
         };
 
@@ -272,20 +277,17 @@ const StarBlaster = () => {
             if (gameLoopRef.current) clearInterval(gameLoopRef.current);
             window.removeEventListener('keydown', handleKeyDown);
         };
-    }, [score, gameOver]); // Rerun effect when score changes to update level logic in keydown
+    }, [score]); // Rerun effect when score changes to update level logic in keydown
 
     const gameTick = () => {
-        if (gameOver) {
-            if (gameLoopRef.current) clearInterval(gameLoopRef.current);
-            return;
-        }
+        let shouldEndGame = false;
+        let scoreToAdd = 0;
 
+        // Move projectiles
         let newProjectiles = projectiles.map(p => ({ ...p, y: p.y - 3 })).filter(p => p.y > 0);
+        
+        // Move and spawn targets
         let newTargets = targets.map(t => ({ ...t, y: t.y + 0.5 }));
-        let newScore = score;
-        let newLevel = level;
-
-        // Spawn new targets
         if (Math.random() < 0.03) {
             newTargets.push({ id: Date.now() + Math.random(), x: Math.random() * 90 + 5, y: -5 });
         }
@@ -293,6 +295,7 @@ const StarBlaster = () => {
         const hitProjectiles = new Set<number>();
         const hitTargets = new Set<number>();
 
+        // Collision detection
         newProjectiles.forEach(proj => {
             newTargets.forEach(target => {
                 if (hitProjectiles.has(proj.id) || hitTargets.has(target.id)) return;
@@ -300,27 +303,40 @@ const StarBlaster = () => {
                 if (distance < 5) {
                     hitProjectiles.add(proj.id);
                     hitTargets.add(target.id);
+                    scoreToAdd += 10;
                 }
             });
         });
-
-        if (hitTargets.size > 0) {
-            newScore += 10 * hitTargets.size;
-            newLevel = Math.floor(newScore / 100) + 1;
-            newProjectiles = newProjectiles.filter(p => !hitProjectiles.has(p.id));
-            newTargets = newTargets.filter(t => !hitTargets.has(t.id));
-        }
-
-        const shouldEndGame = newTargets.some(target => target.y > 100);
         
+        // Filter out hit items
+        newProjectiles = newProjectiles.filter(p => !hitProjectiles.has(p.id));
+        newTargets = newTargets.filter(t => !hitTargets.has(t.id));
+
+        // Check for game over
+        newTargets.forEach(target => {
+            if (target.y > 100) {
+                shouldEndGame = true;
+            }
+        });
+        newTargets = newTargets.filter(t => t.y <= 100);
+
+        // Update state
         setProjectiles(newProjectiles);
-        setTargets(newTargets.filter(t => t.y <= 100));
-        setScore(newScore);
-        setLevel(newLevel);
+        setTargets(newTargets);
+
+        if (scoreToAdd > 0) {
+            setScore(s => s + scoreToAdd);
+        }
         
         if (shouldEndGame) {
             setGameOver(true);
+            if (gameLoopRef.current) clearInterval(gameLoopRef.current);
         }
+
+        setLevel(l => {
+            const newLevel = Math.floor(score / 100) + 1;
+            return newLevel;
+        });
     };
 
 
