@@ -5,9 +5,10 @@ import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Wand2, RefreshCw } from 'lucide-react';
+import { Loader2, Wand2, RefreshCw, Music } from 'lucide-react';
 import { detectMoodAndRespond, type MoodDetectionAndResponseOutput } from '@/ai/flows/mood-detection-and-response';
 import { personalizedRecommendations, type PersonalizedRecommendationsOutput } from '@/ai/flows/personalized-recommendations';
+import { getMusicRecommendation, type MusicRecommendationOutput } from '@/ai/flows/music-recommendations';
 import { CrisisDialog } from '@/components/crisis-dialog';
 import Link from 'next/link';
 
@@ -18,6 +19,7 @@ export default function HomePage() {
   const [userMood, setUserMood] = useState<string | null>(null);
   const [aiResponse, setAiResponse] = useState<MoodDetectionAndResponseOutput | null>(null);
   const [recommendations, setRecommendations] = useState<PersonalizedRecommendationsOutput | null>(null);
+  const [musicRecommendation, setMusicRecommendation] = useState<MusicRecommendationOutput | null>(null);
   const [showCrisisDialog, setShowCrisisDialog] = useState(false);
   const { toast } = useToast();
   const searchParams = useSearchParams();
@@ -32,6 +34,7 @@ export default function HomePage() {
     setIsLoading(true);
     setAiResponse(null);
     setRecommendations(null);
+    setMusicRecommendation(null);
 
     const moodText = `I'm feeling ${mood} today.`;
     if (checkForCrisis(moodText)) {
@@ -41,13 +44,16 @@ export default function HomePage() {
     }
 
     try {
-      const moodResponse = await detectMoodAndRespond({ text: moodText, language: lang });
+      const [moodResponse, recsResponse, musicResponse] = await Promise.all([
+        detectMoodAndRespond({ text: moodText, language: lang }),
+        personalizedRecommendations({ mood }),
+        getMusicRecommendation({ mood, language: lang }),
+      ]);
+      
       setAiResponse(moodResponse);
+      setRecommendations(recsResponse);
+      setMusicRecommendation(musicResponse);
 
-      if (moodResponse.mood) {
-        const recsResponse = await personalizedRecommendations({ mood: moodResponse.mood });
-        setRecommendations(recsResponse);
-      }
     } catch (error) {
       console.error(error);
       toast({
@@ -136,6 +142,18 @@ export default function HomePage() {
           </CardHeader>
           <CardContent>
             <p className="whitespace-pre-wrap leading-relaxed">{recommendations.recommendation}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {musicRecommendation && (
+        <Card className="animate-in fade-in-50">
+          <CardHeader className="flex flex-row items-center gap-4">
+            <Music className="h-6 w-6 text-primary" />
+            <CardTitle className="font-headline">Tune In To Your Mood</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="whitespace-pre-wrap leading-relaxed">{musicRecommendation.recommendation}</p>
           </CardContent>
         </Card>
       )}
