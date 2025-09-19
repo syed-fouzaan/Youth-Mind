@@ -216,6 +216,11 @@ const StarBlaster = () => {
     const [targets, setTargets] = useState<{ id: number; x: number; y: number }[]>([]);
     const gameAreaRef = useRef<HTMLDivElement>(null);
     const gameLoopRef = useRef<NodeJS.Timeout>();
+    const playerXRef = useRef(playerX);
+
+    useEffect(() => {
+        playerXRef.current = playerX;
+    }, [playerX]);
 
     const resetGame = () => {
         setScore(0);
@@ -236,7 +241,7 @@ const StarBlaster = () => {
                 setPlayerX(x => Math.min(95, x + 5));
             } else if (e.key === ' ') { // Space bar
                 e.preventDefault(); // Prevent scrolling
-                setProjectiles(p => [...p, { id: Date.now() + Math.random(), x: playerX, y: 90 }]);
+                setProjectiles(p => [...p, { id: Date.now() + Math.random(), x: playerXRef.current, y: 90 }]);
             }
         };
 
@@ -439,3 +444,5 @@ export default function GamesPage() {
     </div>
   );
 }
+
+    
