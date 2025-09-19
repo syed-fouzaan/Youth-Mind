@@ -2,27 +2,20 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Wand2 } from 'lucide-react';
+import { Loader2, Wand2, RefreshCw } from 'lucide-react';
 import { detectMoodAndRespond, type MoodDetectionAndResponseOutput } from '@/ai/flows/mood-detection-and-response';
 import { personalizedRecommendations, type PersonalizedRecommendationsOutput } from '@/ai/flows/personalized-recommendations';
 import { CrisisDialog } from '@/components/crisis-dialog';
+import Link from 'next/link';
 
 const crisisKeywords = ["suicidal", "self-harm", "can't go on", "end my life", "kill myself"];
 
-const formSchema = z.object({
-  moodText: z.string().min(10, { message: 'Please share a bit more about how you are feeling.' }),
-});
-
 export default function HomePage() {
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [userMood, setUserMood] = useState<string | null>(null);
   const [aiResponse, setAiResponse] = useState<MoodDetectionAndResponseOutput | null>(null);
   const [recommendations, setRecommendations] = useState<PersonalizedRecommendationsOutput | null>(null);
   const [showCrisisDialog, setShowCrisisDialog] = useState(false);
@@ -30,41 +23,25 @@ export default function HomePage() {
   const searchParams = useSearchParams();
   const lang = searchParams.get('lang') || 'en';
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      moodText: '',
-    },
-  });
-
-  useEffect(() => {
-    try {
-      const storedMood = localStorage.getItem('userMood');
-      if (storedMood) {
-        form.setValue('moodText', `I'm feeling a bit ${storedMood} today.`);
-      }
-    } catch (error) {
-        console.warn('Could not read mood from localStorage:', error);
-    }
-  }, [form]);
-
   const checkForCrisis = (text: string) => {
     const lowercasedText = text.toLowerCase();
     return crisisKeywords.some(keyword => lowercasedText.includes(keyword));
   };
-
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (checkForCrisis(values.moodText)) {
-      setShowCrisisDialog(true);
-      return;
-    }
-
+  
+  const getInsights = async (mood: string) => {
     setIsLoading(true);
     setAiResponse(null);
     setRecommendations(null);
 
+    const moodText = `I'm feeling ${mood} today.`;
+    if (checkForCrisis(moodText)) {
+      setShowCrisisDialog(true);
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      const moodResponse = await detectMoodAndRespond({ text: values.moodText, language: lang });
+      const moodResponse = await detectMoodAndRespond({ text: moodText, language: lang });
       setAiResponse(moodResponse);
 
       if (moodResponse.mood) {
@@ -81,7 +58,23 @@ export default function HomePage() {
     } finally {
       setIsLoading(false);
     }
-  }
+  };
+
+  useEffect(() => {
+    try {
+      const storedMood = localStorage.getItem('userMood');
+      if (storedMood) {
+        setUserMood(storedMood);
+        getInsights(storedMood);
+      } else {
+        setIsLoading(false);
+      }
+    } catch (error) {
+        console.warn('Could not read mood from localStorage:', error);
+        setIsLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   
   return (
     <div className="space-y-8 animate-in fade-in-50">
@@ -89,61 +82,46 @@ export default function HomePage() {
       
       <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle className="font-headline text-3xl">How are you feeling today?</CardTitle>
-          <CardDescription>Share your thoughts and feelings, and let our AI companion help you.</CardDescription>
+          <CardTitle className="font-headline text-3xl">Welcome Back!</CardTitle>
+          <CardDescription>
+            {userMood 
+              ? `We've detected your current mood as ${userMood}. Here are some insights for you.`
+              : "How are you feeling today? Visit the Mood Tracker to get started."
+            }
+          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="moodText"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="sr-only">Your thoughts</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="For example: I'm feeling a bit anxious about my exams..."
-                        className="min-h-[150px] text-base"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" disabled={isLoading} className="w-full sm:w-auto">
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Analyzing...
-                  </>
-                ) : (
-                  <>
-                    <Wand2 className="mr-2 h-4 w-4" />
-                    Get Insights
-                  </>
-                )}
-              </Button>
-            </form>
-          </Form>
-        </CardContent>
+        {!userMood && !isLoading && (
+            <CardContent>
+                <Link href="/mood-tracker">
+                    <Button>
+                        <Wand2 className="mr-2 h-4 w-4" />
+                        Go to Mood Tracker
+                    </Button>
+                </Link>
+            </CardContent>
+        )}
       </Card>
       
       {isLoading && (
         <Card>
           <CardContent className="p-6 flex flex-col items-center justify-center space-y-4 min-h-[200px]">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-muted-foreground">Our AI is thinking...</p>
+            <p className="text-muted-foreground">Our AI is preparing your insights...</p>
           </CardContent>
         </Card>
       )}
 
       {aiResponse && (
         <Card className="animate-in fade-in-50">
-          <CardHeader>
-            <CardTitle className="font-headline">A Moment of Reflection</CardTitle>
-            <CardDescription>Detected Mood: <span className="font-semibold text-primary">{aiResponse.mood}</span></CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="font-headline">A Moment of Reflection</CardTitle>
+              <CardDescription>Detected Mood: <span className="font-semibold text-primary">{aiResponse.mood}</span></CardDescription>
+            </div>
+             <Button variant="ghost" size="icon" onClick={() => userMood && getInsights(userMood)} disabled={isLoading}>
+                <RefreshCw className="h-4 w-4" />
+                <span className="sr-only">Refresh</span>
+            </Button>
           </CardHeader>
           <CardContent>
             <p className="whitespace-pre-wrap leading-relaxed">{aiResponse.response}</p>
