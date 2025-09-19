@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -103,22 +103,74 @@ const EmojiCatch = () => {
   const [emojis, setEmojis] = useState<{ id: number; x: number; y: number; type: 'positive' | 'negative'; char: string }[]>([]);
   const [catcherX, setCatcherX] = useState(50);
   const gameAreaRef = useRef<HTMLDivElement>(null);
-  const gameLoopRef = useRef<NodeJS.Timeout>();
+  const gameLoopRef = useRef<number>();
+  const isGameOverRef = useRef(false);
 
   const positiveEmojis = ['😊', '😂', '😍', '🥳', '🤩'];
   const negativeEmojis = ['😡', '😭', '🤢', '💀', '👿'];
 
-  const resetGame = () => {
+  const resetGame = useCallback(() => {
     setScore(0);
     setEmojis([]);
     setGameOver(false);
-    if(gameLoopRef.current) clearInterval(gameLoopRef.current);
-    gameLoopRef.current = setInterval(gameTick, 1000 / 60);
-  };
+    isGameOverRef.current = false;
+    if(gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
+    gameLoopRef.current = requestAnimationFrame(gameTick);
+  }, []);
+
+  const gameTick = useCallback(() => {
+    if (isGameOverRef.current) {
+        if(gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
+        return;
+    }
+
+    setEmojis(prev => {
+        let newEmojis = [...prev];
+        // Create new emojis
+        if (Math.random() < 0.05) {
+            const type = Math.random() > 0.3 ? 'positive' : 'negative';
+            newEmojis.push({
+                id: Date.now() + Math.random(),
+                x: Math.random() * 90 + 5,
+                y: -5,
+                type,
+                char: type === 'positive'
+                    ? positiveEmojis[Math.floor(Math.random() * positiveEmojis.length)]
+                    : negativeEmojis[Math.floor(Math.random() * negativeEmojis.length)],
+            });
+        }
+
+        let hasCollisionOccurred = false;
+        // Move emojis and check for collisions
+        newEmojis = newEmojis
+            .map(emoji => ({ ...emoji, y: emoji.y + 2 }))
+            .filter(emoji => {
+                const catcherRect = { left: catcherX - 5, right: catcherX + 5, top: 85, bottom: 95 };
+                const emojiRect = { left: emoji.x - 2.5, right: emoji.x + 2.5, top: emoji.y - 5, bottom: emoji.y + 5 };
+
+                if (emojiRect.bottom > catcherRect.top && emojiRect.top < catcherRect.bottom && emojiRect.right > catcherRect.left && emojiRect.left < catcherRect.right) {
+                    if (emoji.type === 'positive') {
+                        setScore(s => s + 10);
+                    } else {
+                        isGameOverRef.current = true;
+                        setGameOver(true);
+                        hasCollisionOccurred = true;
+                    }
+                    return false; // remove emoji
+                }
+                return emoji.y < 100; // keep emoji if it's on screen
+            });
+
+        return newEmojis;
+    });
+
+    if (!isGameOverRef.current) {
+        gameLoopRef.current = requestAnimationFrame(gameTick);
+    }
+  }, [catcherX]);
+
 
   useEffect(() => {
-    resetGame();
-
     const handleMouseMove = (e: MouseEvent) => {
       if (gameAreaRef.current) {
         const rect = gameAreaRef.current.getBoundingClientRect();
@@ -128,65 +180,13 @@ const EmojiCatch = () => {
     };
     
     window.addEventListener('mousemove', handleMouseMove);
+    resetGame();
 
     return () => {
-      if(gameLoopRef.current) clearInterval(gameLoopRef.current);
+      if(gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
       window.removeEventListener('mousemove', handleMouseMove);
     };
-  }, []);
-
-  const gameTick = () => {
-    setGameOver(isOver => {
-        if(isOver) {
-            if(gameLoopRef.current) clearInterval(gameLoopRef.current);
-            return true;
-        }
-
-        let isGameOver = false;
-
-        setEmojis(prev => {
-            // Create new emojis
-            let newEmojis = [...prev];
-            if (Math.random() < 0.05) {
-                const type = Math.random() > 0.3 ? 'positive' : 'negative';
-                newEmojis.push({
-                    id: Date.now() + Math.random(),
-                    x: Math.random() * 90 + 5,
-                    y: -5,
-                    type,
-                    char: type === 'positive'
-                        ? positiveEmojis[Math.floor(Math.random() * positiveEmojis.length)]
-                        : negativeEmojis[Math.floor(Math.random() * negativeEmojis.length)],
-                });
-            }
-
-            // Move emojis and check for collisions
-            newEmojis = newEmojis
-                .map(emoji => ({ ...emoji, y: emoji.y + 2 }))
-                .filter(emoji => {
-                    const catcherRect = { left: catcherX - 5, right: catcherX + 5, top: 85, bottom: 95 };
-                    const emojiRect = { left: emoji.x - 2.5, right: emoji.x + 2.5, top: emoji.y - 5, bottom: emoji.y + 5 };
-
-                    if (emojiRect.bottom > catcherRect.top && emojiRect.top < catcherRect.bottom && emojiRect.right > catcherRect.left && emojiRect.left < catcherRect.right) {
-                        if (emoji.type === 'positive') {
-                            setScore(s => s + 10);
-                        } else {
-                            isGameOver = true;
-                        }
-                        return false; // remove emoji
-                    }
-                    return emoji.y < 100; // keep emoji if it's on screen
-                });
-            
-            if (isGameOver) {
-                setGameOver(true);
-            }
-            return newEmojis;
-        });
-
-        return isOver;
-    });
-  };
+  }, [resetGame]);
   
   if (gameOver) {
       return (
@@ -214,7 +214,6 @@ const EmojiCatch = () => {
   );
 };
 
-
 const StarBlaster = () => {
     const [score, setScore] = useState(0);
     const [level, setLevel] = useState(1);
@@ -222,123 +221,118 @@ const StarBlaster = () => {
     const [playerX, setPlayerX] = useState(50);
     const [projectiles, setProjectiles] = useState<{ id: number; x: number; y: number }[]>([]);
     const [targets, setTargets] = useState<{ id: number; x: number; y: number }[]>([]);
-    const gameAreaRef = useRef<HTMLDivElement>(null);
-    const gameLoopRef = useRef<NodeJS.Timeout>();
-    const playerXRef = useRef(playerX);
+    const keysPressedRef = useRef<Record<string, boolean>>({});
+    const gameLoopRef = useRef<number>();
+    const lastShootTimeRef = useRef(0);
+    const SHOOT_COOLDOWN = 200; // ms
 
-    useEffect(() => {
-        playerXRef.current = playerX;
-    }, [playerX]);
-
-    const resetGame = () => {
+    const resetGame = useCallback(() => {
         setScore(0);
         setLevel(1);
         setProjectiles([]);
         setTargets([]);
+        setPlayerX(50);
         setGameOver(false);
-        if (gameLoopRef.current) clearInterval(gameLoopRef.current);
-        gameLoopRef.current = setInterval(gameTick, 1000 / 60);
-    };
+        if (gameLoopRef.current) {
+            cancelAnimationFrame(gameLoopRef.current);
+        }
+        gameLoopRef.current = requestAnimationFrame(gameTick);
+    }, []);
 
-    useEffect(() => {
-        resetGame();
-
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'ArrowLeft') {
-                setPlayerX(x => Math.max(5, x - 5));
-            } else if (e.key === 'ArrowRight') {
-                setPlayerX(x => Math.min(95, x + 5));
-            } else if (e.key === ' ') { // Space bar
-                e.preventDefault(); // Prevent scrolling
-                
-                const currentLevel = Math.floor(score / 100) + 1;
-                let newProjectiles = [];
-
-                if (currentLevel === 1) {
-                    newProjectiles.push({ id: Date.now() + Math.random(), x: playerXRef.current, y: 90 });
-                } else if (currentLevel === 2) {
-                    newProjectiles.push({ id: Date.now() + Math.random(), x: playerXRef.current - 5, y: 90 });
-                    newProjectiles.push({ id: Date.now() + Math.random(), x: playerXRef.current, y: 90 });
-                    newProjectiles.push({ id: Date.now() + Math.random(), x: playerXRef.current + 5, y: 90 });
-                } else { // Level 3+
-                    newProjectiles.push({ id: Date.now() + Math.random(), x: playerXRef.current - 10, y: 90 });
-                    newProjectiles.push({ id: Date.now() + Math.random(), x: playerXRef.current - 5, y: 90 });
-                    newProjectiles.push({ id: Date.now() + Math.random(), x: playerXRef.current, y: 90 });
-                    newProjectiles.push({ id: Date.now() + Math.random(), x: playerXRef.current + 5, y: 90 });
-                    newProjectiles.push({ id: Date.now() + Math.random(), x: playerXRef.current + 10, y: 90 });
-                }
-                setProjectiles(p => [...p, ...newProjectiles]);
-            }
-        };
-
-        window.addEventListener('keydown', handleKeyDown);
-
-        return () => {
-            if (gameLoopRef.current) clearInterval(gameLoopRef.current);
-            window.removeEventListener('keydown', handleKeyDown);
-        };
-    }, [score]); // Rerun effect when score changes to update level logic in keydown
-
-    const gameTick = () => {
-        let shouldEndGame = false;
-        let scoreToAdd = 0;
-
-        // Move projectiles
-        let newProjectiles = projectiles.map(p => ({ ...p, y: p.y - 3 })).filter(p => p.y > 0);
-        
-        // Move and spawn targets
-        let newTargets = targets.map(t => ({ ...t, y: t.y + 0.5 }));
-        if (Math.random() < 0.03) {
-            newTargets.push({ id: Date.now() + Math.random(), x: Math.random() * 90 + 5, y: -5 });
+    const gameTick = useCallback((timestamp: number) => {
+        if (gameOver) {
+            if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
+            return;
         }
 
-        const hitProjectiles = new Set<number>();
-        const hitTargets = new Set<number>();
+        let newPlayerX = playerX;
+        if (keysPressedRef.current['ArrowLeft']) {
+            newPlayerX = Math.max(5, newPlayerX - 2.5);
+        }
+        if (keysPressedRef.current['ArrowRight']) {
+            newPlayerX = Math.min(95, newPlayerX + 2.5);
+        }
 
-        // Collision detection
+        let newProjectiles = projectiles.map(p => ({ ...p, y: p.y - 5 })).filter(p => p.y > 0);
+        if (keysPressedRef.current[' '] && timestamp - lastShootTimeRef.current > SHOOT_COOLDOWN) {
+            lastShootTimeRef.current = timestamp;
+            const currentLevel = Math.floor(score / 100) + 1;
+            if (currentLevel === 1) {
+                newProjectiles.push({ id: timestamp + Math.random(), x: newPlayerX, y: 90 });
+            } else if (currentLevel === 2) {
+                newProjectiles.push({ id: timestamp + Math.random(), x: newPlayerX - 5, y: 90 });
+                newProjectiles.push({ id: timestamp + Math.random(), x: newPlayerX + 5, y: 90 });
+            } else {
+                newProjectiles.push({ id: timestamp + Math.random(), x: newPlayerX - 8, y: 90 });
+                newProjectiles.push({ id: timestamp + Math.random(), x: newPlayerX, y: 90 });
+                newProjectiles.push({ id: timestamp + Math.random(), x: newPlayerX + 8, y: 90 });
+            }
+        }
+
+        let newTargets = targets.map(t => ({ ...t, y: t.y + 0.5 }));
+        if (Math.random() < 0.03) {
+            newTargets.push({ id: timestamp + Math.random() + 1, x: Math.random() * 90 + 5, y: -5 });
+        }
+
+        const hitProjectileIds = new Set<number>();
+        const hitTargetIds = new Set<number>();
+        let scoreToAdd = 0;
+        let shouldEndGame = false;
+
         newProjectiles.forEach(proj => {
             newTargets.forEach(target => {
-                if (hitProjectiles.has(proj.id) || hitTargets.has(target.id)) return;
+                if (hitProjectileIds.has(proj.id) || hitTargetIds.has(target.id)) return;
                 const distance = Math.sqrt(Math.pow(proj.x - target.x, 2) + Math.pow(proj.y - target.y, 2));
-                if (distance < 5) {
-                    hitProjectiles.add(proj.id);
-                    hitTargets.add(target.id);
+                if (distance < 4) { // Collision radius
+                    hitProjectileIds.add(proj.id);
+                    hitTargetIds.add(target.id);
                     scoreToAdd += 10;
                 }
             });
         });
-        
-        // Filter out hit items
-        newProjectiles = newProjectiles.filter(p => !hitProjectiles.has(p.id));
-        newTargets = newTargets.filter(t => !hitTargets.has(t.id));
 
-        // Check for game over
+        newProjectiles = newProjectiles.filter(p => !hitProjectileIds.has(p.id));
+        newTargets = newTargets.filter(t => !hitTargetIds.has(t.id));
+
         newTargets.forEach(target => {
             if (target.y > 100) {
                 shouldEndGame = true;
             }
         });
-        newTargets = newTargets.filter(t => t.y <= 100);
-
-        // Update state
-        setProjectiles(newProjectiles);
-        setTargets(newTargets);
-
-        if (scoreToAdd > 0) {
-            setScore(s => s + scoreToAdd);
-        }
         
         if (shouldEndGame) {
             setGameOver(true);
-            if (gameLoopRef.current) clearInterval(gameLoopRef.current);
+        } else {
+            setPlayerX(newPlayerX);
+            setProjectiles(newProjectiles);
+            setTargets(newTargets);
+            if (scoreToAdd > 0) {
+                setScore(s => s + scoreToAdd);
+                setLevel(l => Math.floor((score + scoreToAdd) / 100) + 1);
+            }
+            gameLoopRef.current = requestAnimationFrame(gameTick);
         }
+    }, [gameOver, playerX, projectiles, targets, score]);
 
-        setLevel(l => {
-            const newLevel = Math.floor(score / 100) + 1;
-            return newLevel;
-        });
-    };
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            keysPressedRef.current[e.key] = true;
+            if (e.key === ' ') e.preventDefault();
+        };
+        const handleKeyUp = (e: KeyboardEvent) => {
+            keysPressedRef.current[e.key] = false;
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('keyup', handleKeyUp);
 
+        resetGame();
+
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('keyup', handleKeyUp);
+            if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
+        };
+    }, [resetGame]);
 
     if (gameOver) {
         return (
@@ -354,7 +348,7 @@ const StarBlaster = () => {
         <div className="flex flex-col items-center justify-center p-4 text-center bg-indigo-100 dark:bg-indigo-900/50 rounded-lg">
             <h3 className="text-2xl font-bold text-indigo-800 dark:text-indigo-200">Star Blaster</h3>
             <p className="text-indigo-600 dark:text-indigo-300 mb-2">Score: {score} | Level: {level} | Use Arrow Keys & Spacebar</p>
-            <div ref={gameAreaRef} className="relative w-full h-[400px] bg-gray-800 dark:bg-black rounded-md overflow-hidden cursor-none">
+            <div className="relative w-full h-[400px] bg-gray-800 dark:bg-black rounded-md overflow-hidden cursor-none">
                 {/* Player */}
                 <div className="absolute bottom-0 w-10 h-5 bg-indigo-400 rounded-t-md" style={{ left: `${playerX}%`, transform: 'translateX(-50%)' }}></div>
                 
@@ -371,7 +365,6 @@ const StarBlaster = () => {
         </div>
     );
 };
-
 
 export default function GamesPage() {
   const [isLoading, setIsLoading] = useState(false);
