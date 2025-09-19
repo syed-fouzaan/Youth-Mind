@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Gamepad2, Lightbulb } from 'lucide-react';
+import { Loader2, Gamepad2, Lightbulb, Bomb } from 'lucide-react';
 import { getGameSuggestion, type GameSuggestionOutput } from '@/ai/flows/game-suggestion';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
@@ -95,6 +95,53 @@ const GratitudeWall = () => {
     );
 };
 
+const StressSmash = () => {
+    const initialItems = 12;
+    const [smashed, setSmashed] = useState<number[]>([]);
+
+    const handleSmash = (id: number) => {
+        if (!smashed.includes(id)) {
+            setSmashed([...smashed, id]);
+        }
+    };
+
+    const resetGame = () => setSmashed([]);
+
+    const allSmashed = smashed.length === initialItems;
+
+    return (
+        <div className="flex flex-col items-center justify-center p-8 text-center bg-red-100 dark:bg-red-900/50 rounded-lg">
+            <h3 className="text-2xl font-bold text-red-800 dark:text-red-200">Stress Smash</h3>
+            <p className="text-red-600 dark:text-red-300 mb-6">Tap the stress icons to make them disappear!</p>
+
+            <div className="grid grid-cols-4 gap-4 mb-6">
+                {Array.from({ length: initialItems }, (_, i) => i).map(id => (
+                    <div key={id} className="relative w-16 h-16">
+                        {!smashed.includes(id) && (
+                            <button 
+                                onClick={() => handleSmash(id)}
+                                className="w-full h-full flex items-center justify-center bg-red-300 dark:bg-red-700 rounded-lg transform transition-transform hover:scale-110 active:scale-90 animate-in fade-in zoom-in-50"
+                                aria-label="Smash stress icon"
+                            >
+                                <Bomb className="w-8 h-8 text-red-800 dark:text-red-200" />
+                            </button>
+                        )}
+                    </div>
+                ))}
+            </div>
+
+            {allSmashed ? (
+                <div className="text-center animate-in fade-in">
+                    <p className="text-xl font-semibold text-green-700 dark:text-green-300 mb-4">All cleared! Well done.</p>
+                    <Button onClick={resetGame}>Play Again</Button>
+                </div>
+            ) : (
+                <p className="text-sm text-red-700 dark:text-red-300">{initialItems - smashed.length} left to smash!</p>
+            )}
+        </div>
+    );
+};
+
 
 export default function GamesPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -142,6 +189,8 @@ export default function GamesPage() {
         return <BreathingExercise />;
       case 'gratitude':
         return <GratitudeWall />;
+      case 'stress-smash':
+        return <StressSmash />;
       default:
         return null;
     }
