@@ -300,11 +300,11 @@ const StarBlaster = () => {
             }
 
             // Collision detection
+            const hitProjectiles = new Set<number>();
+            const hitTargets = new Set<number>();
+
             setProjectiles(currentProjectiles => {
                 setTargets(currentTargets => {
-                    const hitProjectiles = new Set<number>();
-                    const hitTargets = new Set<number>();
-
                     currentProjectiles.forEach(proj => {
                         currentTargets.forEach(target => {
                             if (hitTargets.has(target.id) || hitProjectiles.has(proj.id)) return;
@@ -313,12 +313,12 @@ const StarBlaster = () => {
                             if (distance < 5) { // Collision radius
                                 hitProjectiles.add(proj.id);
                                 hitTargets.add(target.id);
-                                setScore(s => s + 10);
                             }
                         });
                     });
 
                     if (hitTargets.size > 0) {
+                        setScore(s => s + 10 * hitTargets.size);
                         setLevel(l => Math.floor((score + 10 * hitTargets.size) / 100) + 1);
                         return currentTargets.filter(t => !hitTargets.has(t.id));
                     }
