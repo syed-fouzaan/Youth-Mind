@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -36,6 +36,17 @@ export default function HomePage() {
       moodText: '',
     },
   });
+
+  useEffect(() => {
+    try {
+      const storedMood = localStorage.getItem('userMood');
+      if (storedMood) {
+        form.setValue('moodText', `I'm feeling a bit ${storedMood} today.`);
+      }
+    } catch (error) {
+        console.warn('Could not read mood from localStorage:', error);
+    }
+  }, [form]);
 
   const checkForCrisis = (text: string) => {
     const lowercasedText = text.toLowerCase();

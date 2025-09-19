@@ -7,11 +7,14 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2, Smile, AlertTriangle } from 'lucide-react';
 import { detectMoodFromImage, type FacialMoodDetectionOutput } from '@/ai/flows/facial-mood-detection';
 
+const MOOD_HISTORY_LENGTH = 5;
+
 export default function MoodTrackerPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [detectedMood, setDetectedMood] = useState<string | null>(null);
+  const [moodHistory, setMoodHistory] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
 
@@ -55,6 +58,25 @@ export default function MoodTrackerPage() {
 
     return () => clearInterval(interval);
   }, [hasCameraPermission, isProcessing]);
+  
+  useEffect(() => {
+    if (moodHistory.length === 0) return;
+
+    const moodCounts = moodHistory.reduce((acc, mood) => {
+        acc[mood] = (acc[mood] || 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
+
+    const dominantMood = Object.keys(moodCounts).reduce((a, b) => moodCounts[a] > moodCounts[b] ? a : b);
+    setDetectedMood(dominantMood);
+    
+    try {
+        localStorage.setItem('userMood', dominantMood);
+    } catch (error) {
+        console.warn('Could not save mood to localStorage:', error);
+    }
+
+  }, [moodHistory]);
 
   async function captureAndProcessFrame() {
     if (!videoRef.current || !canvasRef.current) return;
@@ -82,7 +104,7 @@ export default function MoodTrackerPage() {
     try {
       const result: FacialMoodDetectionOutput = await detectMoodFromImage({ imageDataUri });
       if (result && result.mood) {
-        setDetectedMood(result.mood);
+        setMoodHistory(prev => [...prev.slice(-MOOD_HISTORY_LENGTH + 1), result.mood]);
       }
     } catch (error) {
       console.error('Mood detection error:', error);
