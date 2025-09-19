@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, BookText, Users, Library, Smile, ListTodo, Sparkles } from 'lucide-react';
+import { Home, BookText, Users, Library, Smile, ListTodo, Sparkles, MessageCircle } from 'lucide-react';
 import {
   Sidebar,
   SidebarHeader,
@@ -28,6 +28,7 @@ export function AppSidebar() {
     { href: '/', icon: <Home />, label: 'Home' },
     { href: '/mood-tracker', icon: <Smile />, label: 'Mood Tracker' },
     { href: '/counselor', icon: <Sparkles />, label: 'AI Counselor' },
+    { href: '/chat', icon: <MessageCircle />, label: 'Chat' },
     { href: '/journal', icon: <BookText />, label: 'Journal' },
     { href: '/support', icon: <Users />, label: 'Peer Support' },
     { href: '/resources', icon: <Library />, label: 'Resources' },
