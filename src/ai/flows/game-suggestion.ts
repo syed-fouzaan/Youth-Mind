@@ -17,7 +17,7 @@ const GameSuggestionInputSchema = z.object({
 export type GameSuggestionInput = z.infer<typeof GameSuggestionInputSchema>;
 
 const GameSuggestionOutputSchema = z.object({
-  gameId: z.enum(['breathing', 'gratitude', 'stress-smash', 'emoji-catch', 'star-blaster']).describe('The ID of the suggested game.'),
+  gameId: z.enum(['breathing', 'gratitude', 'emoji-catch', 'star-blaster']).describe('The ID of the suggested game.'),
   title: z.string().describe('The title of the suggested game.'),
   description: z.string().describe('A brief, encouraging description of the game and why it might help.'),
 });
@@ -37,7 +37,6 @@ Your task is to recommend a simple, calming game based on the user's current moo
 The available games are:
 - 'breathing': A guided breathing exercise. Good for moods like 'anxious', 'calm'.
 - 'gratitude': A gratitude wall exercise. Good for moods like 'sad', 'low'.
-- 'stress-smash': A game to tap away stress icons. Good for 'stressed', 'angry'.
 - 'star-blaster': A shooter game to blast away stress orbs. Good for 'stressed', 'angry', 'frustrated'.
 - 'emoji-catch': A game to catch positive emojis. Good for 'happy', 'neutral', 'bored'.
 
