@@ -9,3 +9,4 @@ import '@/ai/flows/music-recommendations.ts';
 import '@/ai/flows/counselor-chat.ts';
 import '@/ai/flows/voice-counselor-chat.ts';
 import '@/ai/flows/mood-art.ts';
+import '@/ai/flows/game-suggestion.ts';
