@@ -149,7 +149,7 @@ const EmojiCatch = () => {
   const [emojis, setEmojis] = useState<{ id: number; x: number; y: number; type: 'positive' | 'negative'; char: string }[]>([]);
   const [catcherX, setCatcherX] = useState(50);
   const gameAreaRef = useRef<HTMLDivElement>(null);
-  const gameLoopRef = useRef<number>();
+  const gameLoopRef = useRef<NodeJS.Timeout>();
 
   const positiveEmojis = ['😊', '😂', '😍', '🥳', '🤩'];
   const negativeEmojis = ['😡', '😭', '🤢', '💀', '👿'];
@@ -158,6 +158,7 @@ const EmojiCatch = () => {
     setScore(0);
     setEmojis([]);
     setGameOver(false);
+    if(gameLoopRef.current) clearInterval(gameLoopRef.current);
     gameLoopRef.current = setInterval(gameTick, 1000 / 60);
   };
 
@@ -175,51 +176,56 @@ const EmojiCatch = () => {
     window.addEventListener('mousemove', handleMouseMove);
 
     return () => {
-      clearInterval(gameLoopRef.current);
+      if(gameLoopRef.current) clearInterval(gameLoopRef.current);
       window.removeEventListener('mousemove', handleMouseMove);
     };
   }, []);
 
   const gameTick = () => {
-    if (gameOver) {
-        clearInterval(gameLoopRef.current);
-        return;
-    }
-    // Create new emojis
-    if (Math.random() < 0.05) {
-      const type = Math.random() > 0.3 ? 'positive' : 'negative';
-      setEmojis(prev => [
-        ...prev,
-        {
-          id: Date.now(),
-          x: Math.random() * 90 + 5,
-          y: -5,
-          type,
-          char: type === 'positive'
-              ? positiveEmojis[Math.floor(Math.random() * positiveEmojis.length)]
-              : negativeEmojis[Math.floor(Math.random() * negativeEmojis.length)],
-        },
-      ]);
-    }
+    setGameOver(isOver => {
+        if(isOver) {
+            if(gameLoopRef.current) clearInterval(gameLoopRef.current);
+            return true;
+        }
 
-    // Move emojis and check for collisions
-    setEmojis(prev =>
-      prev.map(emoji => ({ ...emoji, y: emoji.y + 2 }))
-        .filter(emoji => {
-          const catcherRect = { left: catcherX - 5, right: catcherX + 5, top: 85, bottom: 95 };
-          const emojiRect = { left: emoji.x - 2.5, right: emoji.x + 2.5, top: emoji.y - 5, bottom: emoji.y + 5 };
+        // Create new emojis
+        if (Math.random() < 0.05) {
+          const type = Math.random() > 0.3 ? 'positive' : 'negative';
+          setEmojis(prev => [
+            ...prev,
+            {
+              id: Date.now() + Math.random(),
+              x: Math.random() * 90 + 5,
+              y: -5,
+              type,
+              char: type === 'positive'
+                  ? positiveEmojis[Math.floor(Math.random() * positiveEmojis.length)]
+                  : negativeEmojis[Math.floor(Math.random() * negativeEmojis.length)],
+            },
+          ]);
+        }
 
-          if (emojiRect.bottom > catcherRect.top && emojiRect.top < catcherRect.bottom && emojiRect.right > catcherRect.left && emojiRect.left < catcherRect.right) {
-            if (emoji.type === 'positive') {
-              setScore(s => s + 10);
-            } else {
-              setGameOver(true);
-            }
-            return false;
-          }
-          return emoji.y < 100;
-        })
-    );
+        // Move emojis and check for collisions
+        let isGameOver = false;
+        setEmojis(prev =>
+          prev.map(emoji => ({ ...emoji, y: emoji.y + 2 }))
+            .filter(emoji => {
+              const catcherRect = { left: catcherX - 5, right: catcherX + 5, top: 85, bottom: 95 };
+              const emojiRect = { left: emoji.x - 2.5, right: emoji.x + 2.5, top: emoji.y - 5, bottom: emoji.y + 5 };
+
+              if (emojiRect.bottom > catcherRect.top && emojiRect.top < catcherRect.bottom && emojiRect.right > catcherRect.left && emojiRect.left < catcherRect.right) {
+                if (emoji.type === 'positive') {
+                  setScore(s => s + 10);
+                } else {
+                  isGameOver = true;
+                }
+                return false;
+              }
+              return emoji.y < 100;
+            })
+        );
+        return isGameOver;
+    });
   };
   
   if (gameOver) {
@@ -246,6 +252,125 @@ const EmojiCatch = () => {
       </div>
     </div>
   );
+};
+
+
+const StarBlaster = () => {
+    const [score, setScore] = useState(0);
+    const [gameOver, setGameOver] = useState(false);
+    const [playerX, setPlayerX] = useState(50);
+    const [projectiles, setProjectiles] = useState<{ id: number; x: number; y: number }[]>([]);
+    const [targets, setTargets] = useState<{ id: number; x: number; y: number }[]>([]);
+    const gameAreaRef = useRef<HTMLDivElement>(null);
+    const gameLoopRef = useRef<NodeJS.Timeout>();
+
+    const resetGame = () => {
+        setScore(0);
+        setProjectiles([]);
+        setTargets([]);
+        setGameOver(false);
+        if (gameLoopRef.current) clearInterval(gameLoopRef.current);
+        gameLoopRef.current = setInterval(gameTick, 1000 / 60);
+    };
+
+    useEffect(() => {
+        resetGame();
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'ArrowLeft') {
+                setPlayerX(x => Math.max(5, x - 5));
+            } else if (e.key === 'ArrowRight') {
+                setPlayerX(x => Math.min(95, x + 5));
+            } else if (e.key === ' ') { // Space bar
+                setProjectiles(p => [...p, { id: Date.now(), x: playerX, y: 90 }]);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+
+        return () => {
+            if (gameLoopRef.current) clearInterval(gameLoopRef.current);
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, []);
+
+    const gameTick = () => {
+        if (gameOver) {
+            if (gameLoopRef.current) clearInterval(gameLoopRef.current);
+            return;
+        }
+
+        // Move projectiles
+        setProjectiles(proj => proj.map(p => ({ ...p, y: p.y - 3 })).filter(p => p.y > 0));
+
+        // Move targets and check for game over
+        setTargets(t => {
+            const newTargets = t.map(target => ({ ...target, y: target.y + 1 }));
+            if (newTargets.some(target => target.y > 100)) {
+                setGameOver(true);
+            }
+            return newTargets.filter(target => target.y <= 100);
+        });
+
+        // Spawn new targets
+        if (Math.random() < 0.03) {
+            setTargets(t => [...t, { id: Date.now(), x: Math.random() * 90 + 5, y: -5 }]);
+        }
+
+        // Collision detection
+        setProjectiles(currentProjectiles => {
+            const newProjectiles = [...currentProjectiles];
+            let hit = false;
+            setTargets(currentTargets => {
+                const newTargets = currentTargets.filter(target => {
+                    for (let i = newProjectiles.length - 1; i >= 0; i--) {
+                        const proj = newProjectiles[i];
+                        const distance = Math.sqrt(Math.pow(proj.x - target.x, 2) + Math.pow(proj.y - target.y, 2));
+                        if (distance < 5) { // Collision radius
+                            newProjectiles.splice(i, 1);
+                            setScore(s => s + 10);
+                            hit = true;
+                            return false; // Remove target
+                        }
+                    }
+                    return true; // Keep target
+                });
+                return newTargets;
+            });
+            return newProjectiles;
+        });
+    };
+
+    if (gameOver) {
+        return (
+            <div className="flex flex-col items-center justify-center p-8 text-center bg-indigo-100 dark:bg-indigo-900/50 rounded-lg h-[400px]">
+                <h3 className="text-2xl font-bold text-indigo-800 dark:text-indigo-200">Game Over!</h3>
+                <p className="text-xl my-4">Your score: <span className="font-bold">{score}</span></p>
+                <Button onClick={resetGame}>Play Again</Button>
+            </div>
+        );
+    }
+
+    return (
+        <div className="flex flex-col items-center justify-center p-4 text-center bg-indigo-100 dark:bg-indigo-900/50 rounded-lg">
+            <h3 className="text-2xl font-bold text-indigo-800 dark:text-indigo-200">Star Blaster</h3>
+            <p className="text-indigo-600 dark:text-indigo-300 mb-2">Score: {score} | Use Arrow Keys & Spacebar</p>
+            <div ref={gameAreaRef} className="relative w-full h-[400px] bg-gray-800 dark:bg-black rounded-md overflow-hidden cursor-none">
+                {/* Player */}
+                <div className="absolute bottom-0 w-10 h-5 bg-indigo-400 rounded-t-md" style={{ left: `${playerX}%`, transform: 'translateX(-50%)' }}></div>
+                
+                {/* Projectiles */}
+                {projectiles.map(p => (
+                    <div key={p.id} className="absolute w-2 h-4 bg-yellow-300 rounded-full" style={{ left: `${p.x}%`, top: `${p.y}%`, transform: 'translateX(-50%)' }}></div>
+                ))}
+                
+                {/* Targets */}
+                {targets.map(t => (
+                     <div key={t.id} className="absolute w-6 h-6 bg-red-500 rounded-full" style={{ left: `${t.x}%`, top: `${t.y}%`, transform: 'translate(-50%, -50%)' }}></div>
+                ))}
+            </div>
+        </div>
+    );
 };
 
 
@@ -299,6 +424,8 @@ export default function GamesPage() {
         return <StressSmash />;
       case 'emoji-catch':
         return <EmojiCatch />;
+      case 'star-blaster':
+        return <StarBlaster />;
       default:
         return null;
     }
