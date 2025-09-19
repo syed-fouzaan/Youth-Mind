@@ -5,78 +5,77 @@ import Image from 'next/image';
 const mockResources = [
   {
     id: 1,
-    title: "Understanding Anxiety",
+    title: "The Uninvited Guest Named Anxiety",
     category: "Anxiety",
-    excerpt: `Anxiety is a natural response to stress, but when it becomes persistent and overwhelming, it can interfere with daily life. It often involves feelings of intense worry, fear, or dread about future events.
+    excerpt: `Imagine your mind is a peaceful room, and one day, an uninvited guest named **Anxiety** shows up. At first, it just whispers worries, but soon its voice gets louder, making your heart race and your thoughts spin. This guest doesn't play fair; it makes you feel restless, on edge, and can even bring physical signs like a racing heart or trembling hands.
 
-**Common Signs of Anxiety:**
-* **Emotional:** Feeling restless, irritable, or constantly on edge. Difficulty concentrating or your mind going blank.
-* **Physical:** Rapid heartbeat, sweating, trembling, feeling weak or tired, stomach upset, or dizziness.
+But here's a secret: **you have the power to quiet this guest.**
 
-**Practical Techniques to Manage Anxiety:**
-* **Grounding (5-4-3-2-1 Method):** When you feel overwhelmed, pause and identify: 5 things you can see, 4 things you can touch, 3 things you can hear, 2 things you can smell, and 1 thing you can taste. This pulls your focus to the present moment.
-* **Progressive Muscle Relaxation:** Tense a group of muscles (like your hands) as you breathe in, and relax them as you breathe out. Work your way through different muscle groups in your body.
-* **Mindful Breathing:** Focus on your breath. Inhale slowly for 4 seconds, hold for 4 seconds, and exhale slowly for 6 seconds. This can calm your nervous system.
-* **Schedule Worry Time:** Set aside a specific, limited time each day to think about your worries. When anxious thoughts arise outside this time, gently remind yourself you'll deal with them later.`,
+When Anxiety starts talking, try this trick called the **5-4-3-2-1 Grounding Method**. It's like a secret code to bring you back to the present moment. Pause and find:
+*   **5 things you can see** (a book, a tree outside, the color of your socks)
+*   **4 things you can touch** (the soft fabric of your shirt, a cool glass of water)
+*   **3 things you can hear** (birds chirping, distant traffic, your own steady breath)
+*   **2 things you can smell** (a nearby flower, the scent of rain)
+*   **1 thing you can taste** (a sip of water, a piece of mint)
+
+With each item you find, you're telling Anxiety, "Not right now. I'm in charge here." This simple act is your first step to reclaiming your peaceful room.`,
     imageUrl: "https://picsum.photos/seed/resource1/600/400",
     imageHint: "calm nature"
   },
   {
     id: 2,
-    title: "The Power of Mindfulness",
+    title: "The Art of Being a Mindful Explorer",
     category: "Mindfulness",
-    excerpt: `Mindfulness is the practice of intentionally paying attention to the present moment without judgment. It's about observing your thoughts, feelings, and bodily sensations as they are, rather than getting swept away by them.
+    excerpt: `Picture yourself as an explorer, but instead of charting new lands, you're discovering the world of the **present moment**. This is the art of **Mindfulness**. It’s not about emptying your mind, but about watching your thoughts and feelings drift by like clouds in the sky, without getting caught in a storm.
 
-**Benefits of Mindfulness:**
-* Reduces stress and anxiety by helping you detach from negative thought patterns.
-* Improves focus and attention.
-* Enhances emotional regulation and self-awareness.
-* Can lead to a greater sense of calm and well-being.
+Being a mindful explorer has incredible rewards:
+*   It can **calm the storms** of stress and worry.
+*   It sharpens your focus, like a spyglass for your mind.
+*   It helps you understand your own heart and emotions better.
 
-**Simple Mindfulness Exercises:**
-* **Mindful Observation:** Choose an object in your room and observe it for a minute. Notice its color, texture, shape, and the way light hits it.
-* **Mindful Listening:** Close your eyes and listen to the sounds around you. Try to identify each sound without labeling it as "good" or "bad."
-* **Body Scan Meditation:** Lie down and bring your attention to your toes. Notice any sensations without trying to change them. Slowly move your focus up through your body—feet, legs, torso, arms, and head.
-* **Mindful Eating:** When you eat, pay full attention to the experience. Notice the colors, smells, textures, and flavors of your food. Eat slowly and savor each bite.`,
+Ready for your first expedition? Try this **Mindful Observation** quest:
+1.  **Choose an ordinary object:** a pen, a leaf, a simple cup.
+2.  **Become a detective:** For one full minute, examine it as if you've never seen it before.
+3.  **Notice everything:** Its true colors, the tiny lines and textures, the way light dances on its surface.
+
+You're not just looking at a pen; you're discovering a universe of detail. By focusing completely on one thing, you give your mind a break from its usual chatter. This is mindfulness in action—a small adventure that leads to a great sense of peace.`,
     imageUrl: "https://picsum.photos/seed/resource2/600/400",
     imageHint: "meditation sunset"
   },
   {
     id: 3,
-    title: "Tips for Better Sleep",
+    title: "The Secret World of Sleep",
     category: "Wellness",
-    excerpt: `Quality sleep is fundamental to mental and physical health. Poor sleep can worsen anxiety, mood swings, and stress. Improving your sleep hygiene can make a significant difference.
+    excerpt: `Think of your mind as a bustling city. During the day, it’s full of traffic, noise, and activity. At night, it needs to quiet down for repairs and cleaning. This magical time is called **sleep**, and it's one of the most powerful tools for your well-being.
 
-**Why Sleep Matters:**
-* **Emotional Regulation:** During sleep, your brain processes emotions. A lack of sleep can make you more irritable and emotionally reactive.
-* **Cognitive Function:** Sleep is crucial for concentration, problem-solving, and memory.
-* **Physical Health:** It supports a healthy immune system and allows your body to repair itself.
+When you sleep, your brain is like a team of tiny librarians, sorting through the day's events and filing away important memories. It also helps **wash away the stress** and regulate your emotions. Without good sleep, the city of your mind becomes chaotic and prone to traffic jams of sad or anxious thoughts.
 
-**Actionable Tips for Better Sleep:**
-* **Consistent Schedule:** Go to bed and wake up around the same time every day, even on weekends. This helps regulate your body's internal clock.
-* **Create a Relaxing Routine:** About an hour before bed, do something calming like reading a book, listening to soft music, or taking a warm bath.
-* **Optimize Your Environment:** Make sure your bedroom is dark, quiet, and cool. Use blackout curtains or an eye mask if needed.
-* **Limit Screen Time:** Avoid phones, tablets, and computers for at least an hour before bed. The blue light they emit can suppress melatonin production, the hormone that controls sleep.
-* **Avoid Stimulants:** Steer clear of caffeine and nicotine in the late afternoon and evening.`,
+Here's the treasure map to the secret world of good sleep:
+*   **Set a Rhythm:** Try to go to bed and wake up around the same time each day. Your body loves a predictable schedule.
+*   **Create a Calm-Down Hour:** Before bed, put away the bright screens. The blue light from phones is like a loud siren telling your brain to stay awake. Instead, read a book, listen to calming music, or take a warm bath.
+*   **Build Your Sleep Cave:** Make your room as dark, quiet, and cool as possible. It signals to your brain that it's time to power down.
+
+Protecting your sleep is like giving your mind a superhero's cape. It prepares you to face the next day with strength, clarity, and calm.`,
     imageUrl: "https://picsum.photos/seed/resource3/600/400",
     imageHint: "peaceful night"
   },
   {
     id: 4,
-    title: "Creative Expression for Emotions",
+    title: "Unlocking Your Feelings with Creativity",
     category: "Creativity",
-    excerpt: `Expressing your emotions through creative outlets can be a powerful way to process feelings that are hard to put into words. It's not about creating a masterpiece; it's about the act of creation itself.
+    excerpt: `Sometimes, feelings like sadness or anger are like tangled knots inside you, too messy for words. But what if you could **unlock them without speaking**? This is the magic of **creative expression**. It's not about being a great artist; it’s about letting your emotions flow into something you can see and touch.
 
-**Why Creative Expression Helps:**
-* **Externalizes Feelings:** It moves difficult emotions from inside you to an external form, making them feel more manageable.
-* **Provides a Healthy Outlet:** It's a constructive way to deal with feelings like anger, sadness, or frustration.
-* **Promotes Self-Discovery:** It can help you understand your own feelings on a deeper level.
+Think of it this way:
+*   It gives your feelings a **voice** when you can't find the words.
+*   It provides a **safe playground** for difficult emotions to be released.
+*   It helps you discover things about yourself you never knew.
 
-**Ways to Get Started:**
-* **Journaling:** Write down whatever comes to mind without censoring yourself. You can use prompts, write a letter to someone (that you don't send), or just list things you're grateful for.
-* **Doodling and Drawing:** You don't need to be an artist. Simply grab a pen and paper and let your hand move. Draw shapes, patterns, or whatever you feel.
-* **Music:** Create a playlist that matches your current mood. If you play an instrument, try improvising. Or, try writing down lyrics that express how you feel.
-* **Collage Making:** Cut out pictures and words from old magazines that resonate with you and arrange them on a page. This can be a very symbolic and insightful activity.`,
+Ready to become a feelings artist? Here are some ideas:
+*   **The Scribble Drawing:** Grab a crayon, close your eyes, and think about how you feel. Let your hand move across the paper, scribbling and looping. Don't try to draw anything specific. Just let the feeling guide your hand. When you're done, look at the shapes and colors. What do you see?
+*   **Mood Music:** Create a playlist that tells the story of your day. What song is your morning? What track is your frustration? What melody is your peace?
+*   **Word Collage:** Cut out words and pictures from a magazine that jump out at you. Arrange them on a page to create a visual poem about your inner world.
+
+Creativity is your secret key. Use it to unlock the knots inside, turning messy feelings into something beautiful and understood.`,
     imageUrl: "https://picsum.photos/seed/resource4/600/400",
     imageHint: "art supplies"
   }
@@ -113,7 +112,7 @@ export default function ResourcesPage() {
                     <CardDescription>{resource.category}</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">{resource.excerpt}</p>
+                    <div className="text-muted-foreground whitespace-pre-wrap leading-relaxed" dangerouslySetInnerHTML={{ __html: resource.excerpt.replace(/\n/g, '<br />').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
                 </CardContent>
             </Card>
           </TabsContent>
