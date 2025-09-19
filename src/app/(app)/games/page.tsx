@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
@@ -267,7 +268,7 @@ const StarBlaster = () => {
 
             // Move targets and check for game over
             setTargets(t => {
-                const newTargets = t.map(target => ({ ...target, y: target.y + 1 }));
+                const newTargets = t.map(target => ({ ...target, y: target.y + 0.5 }));
                 if (newTargets.some(target => target.y > 100)) {
                     shouldEndGame = true;
                 }
