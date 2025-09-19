@@ -238,6 +238,7 @@ const StarBlaster = () => {
         resetGame();
 
         const handleKeyDown = (e: KeyboardEvent) => {
+            if (gameOver) return;
             if (e.key === 'ArrowLeft') {
                 setPlayerX(x => Math.max(5, x - 5));
             } else if (e.key === 'ArrowRight') {
@@ -271,66 +272,57 @@ const StarBlaster = () => {
             if (gameLoopRef.current) clearInterval(gameLoopRef.current);
             window.removeEventListener('keydown', handleKeyDown);
         };
-    }, [score]); // Rerun effect when score changes to update level logic in keydown
+    }, [score, gameOver]); // Rerun effect when score changes to update level logic in keydown
 
     const gameTick = () => {
-        setGameOver(isOver => {
-            if (isOver) {
-                if (gameLoopRef.current) clearInterval(gameLoopRef.current);
-                return true;
-            }
+        if (gameOver) {
+            if (gameLoopRef.current) clearInterval(gameLoopRef.current);
+            return;
+        }
 
-            let shouldEndGame = false;
+        let newProjectiles = projectiles.map(p => ({ ...p, y: p.y - 3 })).filter(p => p.y > 0);
+        let newTargets = targets.map(t => ({ ...t, y: t.y + 0.5 }));
+        let newScore = score;
+        let newLevel = level;
 
-            // Move projectiles
-            setProjectiles(proj => proj.map(p => ({ ...p, y: p.y - 3 })).filter(p => p.y > 0));
+        // Spawn new targets
+        if (Math.random() < 0.03) {
+            newTargets.push({ id: Date.now() + Math.random(), x: Math.random() * 90 + 5, y: -5 });
+        }
 
-            // Move targets and check for game over
-            setTargets(t => {
-                const newTargets = t.map(target => ({ ...target, y: target.y + 0.5 }));
-                if (newTargets.some(target => target.y > 100)) {
-                    shouldEndGame = true;
+        const hitProjectiles = new Set<number>();
+        const hitTargets = new Set<number>();
+
+        newProjectiles.forEach(proj => {
+            newTargets.forEach(target => {
+                if (hitProjectiles.has(proj.id) || hitTargets.has(target.id)) return;
+                const distance = Math.sqrt(Math.pow(proj.x - target.x, 2) + Math.pow(proj.y - target.y, 2));
+                if (distance < 5) {
+                    hitProjectiles.add(proj.id);
+                    hitTargets.add(target.id);
                 }
-                return newTargets.filter(target => target.y <= 100);
             });
-
-            // Spawn new targets
-            if (Math.random() < 0.03) {
-                setTargets(t => [...t, { id: Date.now() + Math.random(), x: Math.random() * 90 + 5, y: -5 }]);
-            }
-
-            // Collision detection
-            const hitProjectiles = new Set<number>();
-            const hitTargets = new Set<number>();
-
-            setProjectiles(currentProjectiles => {
-                setTargets(currentTargets => {
-                    currentProjectiles.forEach(proj => {
-                        currentTargets.forEach(target => {
-                            if (hitTargets.has(target.id) || hitProjectiles.has(proj.id)) return;
-
-                            const distance = Math.sqrt(Math.pow(proj.x - target.x, 2) + Math.pow(proj.y - target.y, 2));
-                            if (distance < 5) { // Collision radius
-                                hitProjectiles.add(proj.id);
-                                hitTargets.add(target.id);
-                            }
-                        });
-                    });
-
-                    if (hitTargets.size > 0) {
-                        setScore(s => s + 10 * hitTargets.size);
-                        setLevel(l => Math.floor((score + 10 * hitTargets.size) / 100) + 1);
-                        return currentTargets.filter(t => !hitTargets.has(t.id));
-                    }
-                    
-                    return currentTargets;
-                });
-                return currentProjectiles.filter(p => !hitProjectiles.has(p.id));
-            });
-            
-            return shouldEndGame;
         });
+
+        if (hitTargets.size > 0) {
+            newScore += 10 * hitTargets.size;
+            newLevel = Math.floor(newScore / 100) + 1;
+            newProjectiles = newProjectiles.filter(p => !hitProjectiles.has(p.id));
+            newTargets = newTargets.filter(t => !hitTargets.has(t.id));
+        }
+
+        const shouldEndGame = newTargets.some(target => target.y > 100);
+        
+        setProjectiles(newProjectiles);
+        setTargets(newTargets.filter(t => t.y <= 100));
+        setScore(newScore);
+        setLevel(newLevel);
+        
+        if (shouldEndGame) {
+            setGameOver(true);
+        }
     };
+
 
     if (gameOver) {
         return (
@@ -469,5 +461,3 @@ export default function GamesPage() {
     </div>
   );
 }
-
-    
