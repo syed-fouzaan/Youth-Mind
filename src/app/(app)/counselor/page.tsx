@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef, useEffect } from 'react';
@@ -5,7 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Sparkles, Mic, Square } from 'lucide-react';
+import { Loader2, Sparkles, Mic, Square, AlertTriangle } from 'lucide-react';
 import { counselorChatWithVoice, type CounselorChatWithVoiceOutput } from '@/ai/flows/voice-counselor-chat';
 import {type Message} from 'genkit';
 
@@ -20,6 +21,7 @@ export default function CounselorPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [conversation, setConversation] = useState<DisplayableMessage[]>([]);
   const [isRecording, setIsRecording] = useState(false);
+  const [hasMicrophonePermission, setHasMicrophonePermission] = useState<boolean | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -34,6 +36,24 @@ export default function CounselorPage() {
     if (!audioPlayerRef.current) {
         audioPlayerRef.current = new Audio();
     }
+
+    const checkMicPermission = async () => {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            setHasMicrophonePermission(false);
+            return;
+        }
+        try {
+            // A quick check without fully acquiring the stream
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            // Stop the tracks immediately to not keep the mic active
+            stream.getTracks().forEach(track => track.stop());
+            setHasMicrophonePermission(true);
+        } catch (error) {
+            setHasMicrophonePermission(false);
+        }
+    };
+    checkMicPermission();
+
   }, []);
 
   useEffect(() => {
@@ -42,8 +62,17 @@ export default function CounselorPage() {
 
 
   const handleStartRecording = async () => {
+    if (hasMicrophonePermission === false) {
+        toast({
+            variant: 'destructive',
+            title: 'Microphone access denied',
+            description: 'Please enable microphone permissions in your browser to use voice input.',
+        });
+        return;
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      setHasMicrophonePermission(true);
       mediaRecorderRef.current = new MediaRecorder(stream);
       audioChunksRef.current = [];
       mediaRecorderRef.current.ondataavailable = (event) => {
@@ -54,6 +83,7 @@ export default function CounselorPage() {
       setIsRecording(true);
     } catch (error) {
       console.error('Error accessing microphone:', error);
+      setHasMicrophonePermission(false);
       toast({
         variant: 'destructive',
         title: 'Microphone access denied',
@@ -65,12 +95,17 @@ export default function CounselorPage() {
   const handleStopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
+      // The onstop event will trigger handleSendAudio
       setIsRecording(false);
       setIsLoading(true);
     }
   };
 
   const handleSendAudio = async () => {
+    if (audioChunksRef.current.length === 0) {
+        setIsLoading(false);
+        return;
+    };
     const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
     audioChunksRef.current = [];
 
@@ -128,9 +163,17 @@ export default function CounselorPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col gap-4">
-            <div className="space-y-4 max-h-[60vh] overflow-y-auto p-4 border rounded-lg bg-muted/50">
-              {conversation.length === 0 ? (
-                <p className="text-muted-foreground text-center">Your conversation will appear here. Press the mic to start.</p>
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto p-4 border rounded-lg bg-muted/50 min-h-[300px]">
+              {hasMicrophonePermission === false ? (
+                <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
+                    <AlertTriangle className="h-10 w-10 text-destructive mb-4" />
+                    <p className="font-bold text-lg text-foreground">Microphone Access Required</p>
+                    <p>Please enable microphone permissions in your browser settings to use this feature.</p>
+                </div>
+              ) : conversation.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
+                    <p>Your conversation will appear here. Press the mic to start.</p>
+                </div>
               ) : (
                 conversation.map((entry, index) => (
                     <div key={index} className={`flex ${entry.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -150,12 +193,12 @@ export default function CounselorPage() {
                <div ref={conversationEndRef} />
             </div>
             <div className="flex justify-center items-center gap-2">
-              <Button onClick={isRecording ? handleStopRecording : handleStartRecording} disabled={isLoading} size="icon" className="h-16 w-16 rounded-full">
+              <Button onClick={isRecording ? handleStopRecording : handleStartRecording} disabled={isLoading || hasMicrophonePermission === false} size="icon" className="h-16 w-16 rounded-full">
                 {isRecording ? <Square /> : <Mic />}
               </Button>
             </div>
             <p className="text-center text-sm text-muted-foreground">
-                {isRecording ? "Tap to stop recording" : (isLoading ? "Processing..." : "Tap the microphone to speak")}
+                {hasMicrophonePermission === false ? "Microphone access is denied" : (isRecording ? "Tap to stop recording" : (isLoading ? "Processing..." : "Tap the microphone to speak"))}
             </p>
           </div>
         </CardContent>
