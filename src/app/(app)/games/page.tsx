@@ -102,79 +102,65 @@ const EmojiCatch = () => {
   const [emojis, setEmojis] = useState<{ id: number; x: number; y: number; type: 'positive' | 'negative'; char: string }[]>([]);
   const gameAreaRef = useRef<HTMLDivElement>(null);
   const gameLoopRef = useRef<number>();
-
-  // Refs for game state to use in requestAnimationFrame
+  const isGameOverRef = useRef(false);
   const catcherXRef = useRef(50);
-  const scoreRef = useRef(score);
-  const emojisRef = useRef(emojis);
-  const gameOverRef = useRef(gameOver);
-
+  
   const positiveEmojis = ['😊', '😂', '😍', '🥳', '🤩'];
   const negativeEmojis = ['😡', '😭', '🤢', '💀', '👿'];
 
+  const gameTick = useCallback(() => {
+    if (isGameOverRef.current) return;
+
+    setEmojis(currentEmojis => {
+      let newEmojis = [...currentEmojis];
+      
+      newEmojis = newEmojis
+          .map(emoji => ({ ...emoji, y: emoji.y + 1 }))
+          .filter(emoji => {
+              if (emoji.y > 100) return false; // remove if off-screen
+              
+              const catcherRect = { left: catcherXRef.current - 5, right: catcherXRef.current + 5, top: 85, bottom: 95 };
+              const emojiRect = { left: emoji.x - 2.5, right: emoji.x + 2.5, top: emoji.y - 5, bottom: emoji.y + 5 };
+
+              if (emojiRect.bottom > catcherRect.top && emojiRect.top < catcherRect.bottom && emojiRect.right > catcherRect.left && emojiRect.left < catcherRect.right) {
+                  if (emoji.type === 'positive') {
+                      setScore(s => s + 10);
+                  } else {
+                      isGameOverRef.current = true;
+                      setGameOver(true);
+                  }
+                  return false; // remove emoji
+              }
+              return true;
+          });
+
+      if (Math.random() < 0.05) {
+          const type = Math.random() > 0.3 ? 'positive' : 'negative';
+          newEmojis.push({
+              id: Date.now() + Math.random(),
+              x: Math.random() * 90 + 5,
+              y: -5,
+              type,
+              char: type === 'positive'
+                  ? positiveEmojis[Math.floor(Math.random() * positiveEmojis.length)]
+                  : negativeEmojis[Math.floor(Math.random() * negativeEmojis.length)],
+          });
+      }
+      return newEmojis;
+    });
+
+    gameLoopRef.current = requestAnimationFrame(gameTick);
+  }, []);
+
   const resetGame = useCallback(() => {
     setScore(0);
-    scoreRef.current = 0;
     setEmojis([]);
-    emojisRef.current = [];
     setGameOver(false);
-    gameOverRef.current = false;
+    isGameOverRef.current = false;
     
     if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
     gameLoopRef.current = requestAnimationFrame(gameTick);
-  }, []);
-
-  const gameTick = useCallback(() => {
-    if (gameOverRef.current) {
-        setGameOver(true);
-        if(gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
-        return;
-    }
-
-    let newEmojis = [...emojisRef.current];
-    let newScore = scoreRef.current;
-    
-    // Move emojis and check for collisions
-    newEmojis = newEmojis
-        .map(emoji => ({ ...emoji, y: emoji.y + 1 }))
-        .filter(emoji => {
-            if (emoji.y > 100) return false;
-            
-            const catcherRect = { left: catcherXRef.current - 5, right: catcherXRef.current + 5, top: 85, bottom: 95 };
-            const emojiRect = { left: emoji.x - 2.5, right: emoji.x + 2.5, top: emoji.y - 5, bottom: emoji.y + 5 };
-
-            if (emojiRect.bottom > catcherRect.top && emojiRect.top < catcherRect.bottom && emojiRect.right > catcherRect.left && emojiRect.left < catcherRect.right) {
-                if (emoji.type === 'positive') {
-                    newScore += 10;
-                } else {
-                    gameOverRef.current = true;
-                }
-                return false; // remove emoji
-            }
-            return true;
-        });
-
-    // Create new emojis
-    if (Math.random() < 0.05) {
-        const type = Math.random() > 0.3 ? 'positive' : 'negative';
-        newEmojis.push({
-            id: Date.now() + Math.random(),
-            x: Math.random() * 90 + 5,
-            y: -5,
-            type,
-            char: type === 'positive'
-                ? positiveEmojis[Math.floor(Math.random() * positiveEmojis.length)]
-                : negativeEmojis[Math.floor(Math.random() * negativeEmojis.length)],
-        });
-    }
-
-    emojisRef.current = newEmojis;
-    scoreRef.current = newScore;
-    setEmojis(newEmojis);
-    setScore(newScore);
-
-    gameLoopRef.current = requestAnimationFrame(gameTick);
-  }, []);
+  }, [gameTick]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -185,11 +171,12 @@ const EmojiCatch = () => {
       }
     };
     
-    resetGame();
     const currentRef = gameAreaRef.current;
     if (currentRef) {
       currentRef.addEventListener('mousemove', handleMouseMove);
     }
+    
+    resetGame();
 
     return () => {
       if(gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
@@ -230,26 +217,13 @@ const MindfulSlice = () => {
     const [gameOver, setGameOver] = useState(false);
     const [items, setItems] = useState<{ id: number; x: number; y: number; vx: number; vy: number; type: 'positive' | 'negative'; char: string }[]>([]);
     const gameLoopRef = useRef<number>();
-    const gameOverRef = useRef(false);
+    const isGameOverRef = useRef(false);
 
     const positiveEmojis = ['😊', '✨', '💖', '🎉', '🌟'];
     const negativeEmojis = ['😠', '⛈️', '💀', '🔥', '👿'];
 
-    const resetGame = useCallback(() => {
-        setScore(0);
-        setItems([]);
-        setGameOver(false);
-        gameOverRef.current = false;
-        if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
-        gameLoopRef.current = requestAnimationFrame(gameTick);
-    }, []);
-
     const gameTick = useCallback(() => {
-        if(gameOverRef.current) {
-            if(gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
-            setGameOver(true);
-            return;
-        }
+        if(isGameOverRef.current) return;
 
         setItems(prevItems => {
             let newItems = prevItems
@@ -276,15 +250,30 @@ const MindfulSlice = () => {
         gameLoopRef.current = requestAnimationFrame(gameTick);
     }, []);
 
-    const handleSlice = (id: number, type: 'positive' | 'negative') => {
-        if (gameOverRef.current) return;
+    const resetGame = useCallback(() => {
+        setScore(0);
+        setItems([]);
+        setGameOver(false);
+        isGameOverRef.current = false;
+        if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
+        gameLoopRef.current = requestAnimationFrame(gameTick);
+    }, [gameTick]);
 
-        if (type === 'negative') {
-            setScore(s => s + 10);
-            setItems(items => items.filter(item => item.id !== id));
-        } else {
-            gameOverRef.current = true;
-        }
+    const handleSlice = (id: number, type: 'positive' | 'negative') => {
+        if (isGameOverRef.current) return;
+
+        setItems(items => items.filter(item => {
+            if (item.id === id) {
+                 if (type === 'negative') {
+                    setScore(s => s + 10);
+                } else {
+                    isGameOverRef.current = true;
+                    setGameOver(true);
+                }
+                return false;
+            }
+            return true;
+        }));
     };
     
     useEffect(() => {
@@ -332,8 +321,52 @@ const PathToCalm = () => {
     
     const playerRef = useRef<{ x: number; y: number; width: number; height: number; } | null>(null);
     const pathRef = useRef<{x: number, width: number}[]>([]);
-    const frameRef = useRef(0);
-    const gameOverRef = useRef(false);
+    const isGameOverRef = useRef(false);
+
+    const gameTick = useCallback(() => {
+        if(isGameOverRef.current) return;
+
+        const canvas = canvasRef.current;
+        const ctx = canvas?.getContext('2d');
+        const player = playerRef.current;
+        if (!canvas || !ctx || !player) return;
+
+        // Move path up
+        pathRef.current.shift();
+        
+        // Add new path segment
+        const lastSegment = pathRef.current[pathRef.current.length - 1];
+        let newX = lastSegment.x + (Math.random() - 0.5) * 8;
+        const pathWidth = 80;
+        if (newX < pathWidth/2) newX = pathWidth/2;
+        if (newX > canvas.width - pathWidth/2) newX = canvas.width - pathWidth/2;
+        pathRef.current.push({x: newX, width: pathWidth});
+        
+        // Player collision
+        const playerPathSegment = pathRef.current[Math.floor(player.y)];
+        if (player.x < playerPathSegment.x - playerPathSegment.width / 2 || player.x > playerPathSegment.x + playerPathSegment.width / 2) {
+            isGameOverRef.current = true;
+            setGameOver(true);
+        } else {
+             setScore(s => s + 1);
+        }
+
+        // Draw
+        const isDark = document.documentElement.classList.contains('dark');
+        ctx.fillStyle = isDark ? '#1E293B' : '#F1F5F9';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.fillStyle = isDark ? '#475569' : '#CBD5E1';
+        for (let i = 0; i < pathRef.current.length; i++) {
+            const seg = pathRef.current[i];
+            ctx.fillRect(seg.x - seg.width / 2, i, seg.width, 1);
+        }
+        
+        ctx.fillStyle = isDark ? '#94A3B8' : '#1E293B';
+        ctx.fillRect(player.x - player.width / 2, player.y - player.height / 2, player.width, player.height);
+        
+        gameLoopRef.current = requestAnimationFrame(gameTick);
+    }, []);
 
     const resetGame = useCallback(() => {
         const canvas = canvasRef.current;
@@ -341,8 +374,7 @@ const PathToCalm = () => {
 
         setScore(0);
         setGameOver(false);
-        gameOverRef.current = false;
-        frameRef.current = 0;
+        isGameOverRef.current = false;
         
         playerRef.current = { x: canvas.width / 2, y: canvas.height - 30, width: 20, height: 20 };
         pathRef.current = [];
@@ -352,57 +384,7 @@ const PathToCalm = () => {
         
         if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
         gameLoopRef.current = requestAnimationFrame(gameTick);
-    }, []);
-
-    const gameTick = useCallback(() => {
-        if(gameOverRef.current) {
-            setGameOver(true);
-            if(gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
-            return;
-        }
-
-        const canvas = canvasRef.current;
-        const ctx = canvas?.getContext('2d');
-        const player = playerRef.current;
-        if (!canvas || !ctx || !player) return;
-
-        frameRef.current++;
-
-        // Move path up
-        pathRef.current.shift();
-        
-        // Add new path segment
-        const lastSegment = pathRef.current[pathRef.current.length - 1];
-        let newX = lastSegment.x + (Math.random() - 0.5) * 8;
-        if (newX < 50) newX = 50;
-        if (newX > canvas.width - 50) newX = canvas.width - 50;
-        pathRef.current.push({x: newX, width: 80});
-        
-        // Player collision
-        const playerPathSegment = pathRef.current[Math.floor(player.y)];
-        if (player.x < playerPathSegment.x - playerPathSegment.width / 2 || player.x > playerPathSegment.x + playerPathSegment.width / 2) {
-            gameOverRef.current = true;
-        }
-        
-        setScore(s => s + 1);
-
-        // Draw
-        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--background') || '#FFF';
-        const isDark = document.documentElement.classList.contains('dark');
-        ctx.fillStyle = isDark ? '#1a202c' : '#E0F2F1';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        ctx.fillStyle = isDark ? '#B2DFDB' : '#80CBC4';
-        for (let i = 0; i < pathRef.current.length; i++) {
-            const seg = pathRef.current[i];
-            ctx.fillRect(seg.x - seg.width / 2, i, seg.width, 1);
-        }
-        
-        ctx.fillStyle = isDark ? '#FFFFFF' : '#00796B';
-        ctx.fillRect(player.x - player.width / 2, player.y - player.height / 2, player.width, player.height);
-        
-        gameLoopRef.current = requestAnimationFrame(gameTick);
-    }, []);
+    }, [gameTick]);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -438,7 +420,7 @@ const PathToCalm = () => {
         <div className="flex flex-col items-center justify-center p-4 text-center bg-teal-100 dark:bg-teal-900/50 rounded-lg">
             <h3 className="text-2xl font-bold text-teal-800 dark:text-teal-200">Path to Calm</h3>
             <p className="text-teal-600 dark:text-teal-300 mb-2">Stay on the path. Score: {score}</p>
-            <canvas ref={canvasRef} width="500" height="350" className="bg-white dark:bg-gray-800 rounded-md cursor-none"></canvas>
+            <canvas ref={canvasRef} width="500" height="350" className="bg-slate-200 dark:bg-slate-800 rounded-md cursor-none"></canvas>
         </div>
     );
 };
@@ -453,6 +435,24 @@ export default function GamesPage() {
   const searchParams = useSearchParams();
   const lang = searchParams.get('lang') || 'en';
 
+  const fetchSuggestion = useCallback(async (mood: string) => {
+    setIsLoading(true);
+    setSuggestion(null);
+    try {
+      const response = await getGameSuggestion({ mood, language: lang });
+      setSuggestion(response);
+    } catch (error) {
+      console.error(error);
+      toast({
+        variant: 'destructive',
+        title: 'An error occurred',
+        description: 'Failed to get a game suggestion. Please try again.',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [lang, toast]);
+
   useEffect(() => {
     try {
       const storedMood = localStorage.getItem('userMood');
@@ -463,25 +463,7 @@ export default function GamesPage() {
     } catch (error) {
         console.warn('Could not read mood from localStorage:', error);
     }
-  }, [lang]);
-
-  const fetchSuggestion = async (mood: string) => {
-    setIsLoading(true);
-    setSuggestion(null);
-    try {
-      const response = await getGameSuggestion({ mood, language: lang });
-      setSuggestion(response);
-    } catch (error) => {
-      console.error(error);
-      toast({
-        variant: 'destructive',
-        title: 'An error occurred',
-        description: 'Failed to get a game suggestion. Please try again.',
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [fetchSuggestion]);
 
   const renderGame = () => {
     if (!suggestion) return null;
@@ -550,5 +532,3 @@ export default function GamesPage() {
     </div>
   );
 }
-
-    
