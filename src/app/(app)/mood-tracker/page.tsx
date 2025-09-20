@@ -19,6 +19,15 @@ export default function MoodTrackerPage() {
 
   useEffect(() => {
     const getCameraPermission = async () => {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setHasCameraPermission(false);
+        toast({
+          variant: 'destructive',
+          title: 'Camera Not Supported',
+          description: 'Your browser does not support camera access.',
+        });
+        return;
+      }
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
         setHasCameraPermission(true);
@@ -129,21 +138,21 @@ export default function MoodTrackerPage() {
           <div className="relative aspect-video w-full max-w-2xl mx-auto bg-muted rounded-lg overflow-hidden border">
             <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
             <canvas ref={canvasRef} className="hidden"></canvas>
-            {hasCameraPermission === null && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="mt-2 text-muted-foreground">Initializing camera...</p>
-              </div>
-            )}
             
-            {hasCameraPermission === false && (
+            {hasCameraPermission === false ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-destructive/10 p-4 text-center">
                  <AlertTriangle className="h-10 w-10 text-destructive" />
                  <p className="mt-4 font-semibold text-destructive">Camera access is required.</p>
                  <p className="text-sm text-destructive/80">Please enable camera permissions in your browser settings to use this feature.</p>
               </div>
-            )}
-             {(isProcessing && hasCameraPermission) && (
+            ) : hasCameraPermission === null ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="mt-2 text-muted-foreground">Initializing camera...</p>
+              </div>
+            ) : null}
+
+            {(isProcessing && hasCameraPermission) && (
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-background/80 text-foreground px-3 py-1 rounded-full text-sm flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 <span>Analyzing...</span>
