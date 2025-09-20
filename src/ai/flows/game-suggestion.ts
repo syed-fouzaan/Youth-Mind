@@ -18,7 +18,7 @@ export type GameSuggestionInput = z.infer<typeof GameSuggestionInputSchema>;
 
 const GameSuggestionOutputSchema = z.object({
   gameId: z
-    .enum(['breathing', 'gratitude', 'emoji-catch', 'mindful-slice', 'path-to-calm'])
+    .enum(['breathing', 'gratitude', 'shooter', 'balloon', 'reaction', 'memory'])
     .describe('The ID of the suggested game.'),
   title: z.string().describe('The title of the suggested game.'),
   description: z.string().describe('A brief, encouraging description of the game and why it might help.'),
@@ -37,11 +37,13 @@ const prompt = ai.definePrompt({
 
 Your task is to recommend a simple, calming game based on the user's current mood.
 The available games are:
-- 'breathing': A guided breathing exercise. Good for moods like 'anxious', 'stressed', 'angry'.
+- 'breathing': A guided breathing exercise. Good for moods like 'anxious', 'stressed'.
 - 'gratitude': A gratitude wall exercise. Good for moods like 'sad', 'low'.
-- 'emoji-catch': A game to catch positive emojis. Good for 'happy', 'neutral', 'bored', 'calm'.
-- 'mindful-slice': A game to slice away negative thoughts. Good for 'stressed', 'angry'.
-- 'path-to-calm': A racing game to improve focus. Good for 'anxious', 'low'.
+- 'shooter': A fast-paced target shooting game. Good for 'angry', 'stressed'.
+- 'balloon': A gentle balloon popping game. Good for 'sad', 'bored'.
+- 'reaction': A simple reaction time test. Good for 'tired', 'unfocused'.
+- 'memory': A classic card matching game. Good for 'happy', 'calm', 'neutral'.
+
 
 Based on the user's mood, select one game ID and provide a title and a short, encouraging description for it in the specified language.
 

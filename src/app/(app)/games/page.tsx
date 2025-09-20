@@ -1,552 +1,288 @@
-
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
-import { Loader2, Gamepad2, Lightbulb } from 'lucide-react';
-import { getGameSuggestion, type GameSuggestionOutput } from '@/ai/flows/game-suggestion';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Gamepad2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-// Game Components
-const BreathingExercise = () => {
-    return (
-      <div className="flex flex-col items-center justify-center p-8 text-center bg-blue-100 dark:bg-blue-900/50 rounded-lg">
-        <h3 className="text-2xl font-bold text-blue-800 dark:text-blue-200">Guided Breathing</h3>
-        <p className="text-blue-600 dark:text-blue-300 mb-6">Follow the animation to steady your breath.</p>
-        <div className="relative flex items-center justify-center w-48 h-48">
-          <div className="absolute w-full h-full bg-blue-300 dark:bg-blue-600 rounded-full animate-pulse-slow opacity-50"></div>
-          <div className="relative w-32 h-32 bg-blue-400 dark:bg-blue-700 rounded-full flex items-center justify-center animate-breathe">
-            <p className="font-semibold text-white">Breathe</p>
-          </div>
-        </div>
-        <style jsx>{`
-            @keyframes breathe {
-                0%, 100% { transform: scale(0.8); }
-                50% { transform: scale(1.1); }
-            }
-            .animate-breathe {
-                animation: breathe 8s ease-in-out infinite;
-            }
-            @keyframes pulse-slow {
-                0%, 100% { opacity: 0.5; }
-                50% { opacity: 0.2; }
-            }
-            .animate-pulse-slow {
-                animation: pulse-slow 8s ease-in-out infinite;
-            }
-        `}</style>
-      </div>
-    );
-};
-
-const GratitudeWall = () => {
-    const [entries, setEntries] = useState<string[]>([]);
-    const [newEntry, setNewEntry] = useState('');
-
-    useEffect(() => {
-        try {
-            const storedEntries = localStorage.getItem('gratitude-wall');
-            if (storedEntries) {
-                setEntries(JSON.parse(storedEntries));
-            }
-        } catch (error) {
-            console.warn('Could not load gratitude entries:', error);
-        }
-    }, []);
-
-    const addEntry = () => {
-        if (!newEntry.trim()) return;
-        const updatedEntries = [...entries, newEntry];
-        setEntries(updatedEntries);
-        setNewEntry('');
-        try {
-            localStorage.setItem('gratitude-wall', JSON.stringify(updatedEntries));
-        } catch (error) {
-            console.warn('Could not save gratitude entry:', error);
-        }
-    };
-
-    return (
-      <div className="p-8 bg-yellow-50 dark:bg-yellow-900/30 rounded-lg">
-        <h3 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 text-center mb-4">Gratitude Wall</h3>
-        <p className="text-yellow-700 dark:text-yellow-300 text-center mb-6">What is something you're grateful for today?</p>
-        <div className="flex gap-2 mb-6">
-          <input
-            type="text"
-            value={newEntry}
-            onChange={(e) => setNewEntry(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && addEntry()}
-            placeholder="e.g., A sunny morning"
-            className="flex-1 p-2 border rounded-md border-yellow-300 dark:bg-yellow-800/50"
-          />
-          <Button onClick={addEntry} className="bg-yellow-500 hover:bg-yellow-600 text-white">Post</Button>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {entries.map((entry, index) => (
-            <div key={index} className="bg-yellow-100 dark:bg-yellow-800/80 p-4 rounded-lg shadow-sm -rotate-2 hover:rotate-0 transition-transform">
-              <p className="text-yellow-900 dark:text-yellow-100">{entry}</p>
-            </div>
-          ))}
-        </div>
-        {entries.length === 0 && <p className="text-center text-yellow-600 dark:text-yellow-400">Your gratitude posts will appear here.</p>}
-      </div>
-    );
-};
-
-const EmojiCatch = () => {
-  const [score, setScore] = useState(0);
-  const [gameOver, setGameOver] = useState(false);
-  const [emojis, setEmojis] = useState<{ id: number; x: number; y: number; type: 'positive' | 'negative'; char: string }[]>([]);
-  const gameAreaRef = useRef<HTMLDivElement>(null);
-  const gameLoopRef = useRef<number>();
-  const catcherXRef = useRef(50);
-  
-  const positiveEmojis = ['😊', '😂', '😍', '🥳', '🤩'];
-  const negativeEmojis = ['😡', '😭', '🤢', '💀', '👿'];
-
-  const resetGame = useCallback(() => {
-    setScore(0);
-    setEmojis([]);
-    setGameOver(false);
-    
-    if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
-    
-    const localEmojis: typeof emojis = [];
-    let localScore = 0;
-
-    const gameTick = () => {
-      let newEmojis = [...localEmojis];
-      let shouldEndGame = false;
-
-      // Update positions and check for collisions
-      newEmojis = newEmojis
-          .map(emoji => ({ ...emoji, y: emoji.y + 1 }))
-          .filter(emoji => {
-              if (emoji.y > 100) return false;
-              
-              const catcherRect = { left: catcherXRef.current - 5, right: catcherXRef.current + 5, top: 85, bottom: 95 };
-              const emojiRect = { left: emoji.x - 2.5, right: emoji.x + 2.5, top: emoji.y - 5, bottom: emoji.y + 5 };
-
-              if (emojiRect.bottom > catcherRect.top && emojiRect.top < catcherRect.bottom && emojiRect.right > catcherRect.left && emojiRect.left < catcherRect.right) {
-                  if (emoji.type === 'positive') {
-                      localScore += 10;
-                  } else {
-                      shouldEndGame = true;
-                  }
-                  return false;
-              }
-              return true;
-          });
-
-      // Spawn new emojis
-      if (Math.random() < 0.05) {
-          const type = Math.random() > 0.3 ? 'positive' : 'negative';
-          newEmojis.push({
-              id: Date.now() + Math.random(),
-              x: Math.random() * 90 + 5,
-              y: -5,
-              type,
-              char: type === 'positive'
-                  ? positiveEmojis[Math.floor(Math.random() * positiveEmojis.length)]
-                  : negativeEmojis[Math.floor(Math.random() * negativeEmojis.length)],
-          });
-      }
-
-      localEmojis.splice(0, localEmojis.length, ...newEmojis);
-      setEmojis(newEmojis);
-      setScore(localScore);
-
-      if (shouldEndGame) {
-        setGameOver(true);
-      } else {
-        gameLoopRef.current = requestAnimationFrame(gameTick);
-      }
-    };
-    
-    gameLoopRef.current = requestAnimationFrame(gameTick);
-  }, []);
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (gameAreaRef.current) {
-        const rect = gameAreaRef.current.getBoundingClientRect();
-        const newX = ((e.clientX - rect.left) / rect.width) * 100;
-        catcherXRef.current = Math.max(5, Math.min(95, newX));
-      }
-    };
-    
-    const currentRef = gameAreaRef.current;
-    if (currentRef) {
-      currentRef.addEventListener('mousemove', handleMouseMove);
-    }
-    
-    resetGame();
-
-    return () => {
-      if(gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
-      if(currentRef) {
-        currentRef.removeEventListener('mousemove', handleMouseMove);
-      }
-    };
-  }, [resetGame]);
-  
-  if (gameOver) {
-      return (
-        <div className="flex flex-col items-center justify-center p-8 text-center bg-green-100 dark:bg-green-900/50 rounded-lg h-[400px]">
-            <h3 className="text-2xl font-bold text-green-800 dark:text-green-200">Game Over!</h3>
-            <p className="text-xl my-4">Your score: <span className="font-bold">{score}</span></p>
-            <Button onClick={resetGame}>Play Again</Button>
-        </div>
-      )
-  }
-
-  return (
-    <div className="flex flex-col items-center justify-center p-4 text-center bg-green-100 dark:bg-green-900/50 rounded-lg">
-      <h3 className="text-2xl font-bold text-green-800 dark:text-green-200">Emoji Catch</h3>
-      <p className="text-green-600 dark:text-green-300 mb-2">Catch the good vibes! Score: {score}</p>
-      <div ref={gameAreaRef} className="relative w-full h-[400px] bg-green-200 dark:bg-green-800/50 rounded-md overflow-hidden cursor-none">
-        <div className="absolute bottom-0 w-20 h-10 bg-green-500 dark:bg-green-600 rounded-t-lg" style={{ left: `${catcherXRef.current}%`, transform: 'translateX(-50%)' }}></div>
-        {emojis.map(emoji => (
-          <div key={emoji.id} className="absolute text-4xl" style={{ left: `${emoji.x}%`, top: `${emoji.y}%`, transform: 'translateX(-50%)' }}>
-            {emoji.char}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-const MindfulSlice = () => {
-    const [score, setScore] = useState(0);
-    const [gameOver, setGameOver] = useState(false);
-    const [items, setItems] = useState<{ id: number; x: number; y: number; vx: number; vy: number; type: 'positive' | 'negative'; char: string }[]>([]);
-    const gameLoopRef = useRef<number>();
-
-    const positiveEmojis = ['😊', '✨', '💖', '🎉', '🌟'];
-    const negativeEmojis = ['😠', '⛈️', '💀', '🔥', '👿'];
-
-    const resetGame = useCallback(() => {
-        setScore(0);
-        setItems([]);
-        setGameOver(false);
-        if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
-
-        let localItems: typeof items = [];
-        let localScore = 0;
-        let localGameOver = false;
-
-        const handleSlice = (id: number, type: 'positive' | 'negative') => {
-          if (localGameOver) return;
-  
-          const itemExists = localItems.find(item => item.id === id);
-          if (!itemExists) return;
-  
-          if (type === 'negative') {
-              localScore += 10;
-              setScore(s => s + 10);
-          } else {
-              localGameOver = true;
-              setGameOver(true);
-          }
-          localItems = localItems.filter(item => item.id !== id);
-        };
-        
-        const gameTick = () => {
-            if (localGameOver) {
-              setItems([]);
-              return;
-            };
-
-            let newItems = localItems
-                .map(item => ({ ...item, x: item.x + item.vx, y: item.y + item.vy, vy: item.vy + 0.05 }))
-                .filter(item => item.y < 110);
-
-            if (Math.random() < 0.04) {
-                const type = Math.random() > 0.4 ? 'negative' : 'positive';
-                newItems.push({
-                    id: Date.now() + Math.random(),
-                    x: Math.random() * 80 + 10,
-                    y: 110,
-                    vy: -3 - Math.random() * 1.5,
-                    vx: Math.random() * 2 - 1,
-                    type: type,
-                    char: type === 'negative'
-                        ? negativeEmojis[Math.floor(Math.random() * negativeEmojis.length)]
-                        : positiveEmojis[Math.floor(Math.random() * positiveEmojis.length)],
-                });
-            }
-            localItems = newItems;
-            setItems(newItems.map(item => ({...item}))); // Create new objects for react state
-
-            gameLoopRef.current = requestAnimationFrame(gameTick);
-        };
-        
-        // This makes handleSlice available to the JSX event handlers
-        (window as any).handleSlice = handleSlice;
-        
-        gameLoopRef.current = requestAnimationFrame(gameTick);
-
-    }, []);
-    
-    useEffect(() => {
-        resetGame();
-        return () => {
-            if(gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
-            delete (window as any).handleSlice;
-        }
-    }, [resetGame]);
-
-    if (gameOver) {
-      return (
-        <div className="flex flex-col items-center justify-center p-8 text-center bg-red-100 dark:bg-red-900/50 rounded-lg h-[400px]">
-            <h3 className="text-2xl font-bold text-red-800 dark:text-red-200">Game Over!</h3>
-            <p className="text-xl my-4">You sliced a positive thought! Your score: <span className="font-bold">{score}</span></p>
-            <Button onClick={resetGame}>Play Again</Button>
-        </div>
-      )
-    }
-
-    return (
-        <div className="flex flex-col items-center justify-center p-4 text-center bg-purple-100 dark:bg-purple-900/50 rounded-lg">
-            <h3 className="text-2xl font-bold text-purple-800 dark:text-purple-200">Mindful Slice</h3>
-            <p className="text-purple-600 dark:text-purple-300 mb-2">Slice the negative thoughts, avoid the positive ones! Score: {score}</p>
-            <div className="relative w-full h-[400px] bg-purple-200 dark:bg-purple-800/50 rounded-md overflow-hidden cursor-crosshair">
-                {items.map(item => (
-                    <div 
-                        key={item.id} 
-                        className="absolute text-5xl cursor-pointer select-none" 
-                        style={{ left: `${item.x}%`, top: `${item.y}%`, transform: 'translate(-50%, -50%)' }}
-                        onMouseEnter={() => (window as any).handleSlice(item.id, item.type)}
-                    >
-                        {item.char}
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-};
-
-const PathToCalm = () => {
+// Game: Angry Shooter
+const AngryShooter = () => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [score, setScore] = useState(0);
-    const [gameOver, setGameOver] = useState(false);
-    const gameLoopRef = useRef<number>();
-    
-    const playerRef = useRef<{ x: number; y: number; width: number; height: number; } | null>(null);
-    const pathRef = useRef<{x: number, width: number}[]>([]);
-    
-    const resetGame = useCallback(() => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
+    const targetRef = useRef({ x: 50, y: 50, size: 30 });
+    const animationFrameId = useRef<number>();
 
-      setScore(0);
-      setGameOver(false);
-
-      playerRef.current = { x: canvas.width / 2, y: canvas.height - 30, width: 20, height: 20 };
-      pathRef.current = [];
-      for (let i = 0; i < canvas.height; i++) {
-          pathRef.current.push({ x: canvas.width / 2, width: 80 });
-      }
-      
-      if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
-      
-      let localScore = 0;
-
-      const gameTick = () => {
-          const player = playerRef.current;
-          if (!player) return;
-
-          // Move path up
-          pathRef.current.shift();
-          
-          // Add new path segment
-          const lastSegment = pathRef.current[pathRef.current.length - 1];
-          let newX = lastSegment.x + (Math.random() - 0.5) * 8;
-          const pathWidth = 80;
-          if (newX < pathWidth/2) newX = pathWidth/2;
-          if (newX > canvas.width - pathWidth/2) newX = canvas.width - pathWidth/2;
-          pathRef.current.push({x: newX, width: pathWidth});
-          
-          // Player collision
-          const playerPathSegment = pathRef.current[Math.floor(player.y)];
-          if (player.x < playerPathSegment.x - playerPathSegment.width / 2 || player.x > playerPathSegment.x + playerPathSegment.width / 2) {
-              setGameOver(true);
-              setScore(localScore);
-              return;
-          } else {
-              localScore++;
-              setScore(localScore);
-          }
-
-          // Draw
-          const ctx = canvas.getContext('2d');
-          if (!ctx) return;
-          const isDark = document.documentElement.classList.contains('dark');
-          ctx.fillStyle = isDark ? '#1E293B' : '#F1F5F9';
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          
-          ctx.fillStyle = isDark ? '#475569' : '#CBD5E1';
-          for (let i = 0; i < pathRef.current.length; i++) {
-              const seg = pathRef.current[i];
-              ctx.fillRect(seg.x - seg.width / 2, i, seg.width, 1);
-          }
-          
-          ctx.fillStyle = isDark ? '#94A3B8' : '#1E293B';
-          ctx.fillRect(player.x - player.width / 2, player.y - player.height / 2, player.width, player.height);
-          
-          gameLoopRef.current = requestAnimationFrame(gameTick);
-      };
-      
-      gameLoopRef.current = requestAnimationFrame(gameTick);
-
+    const draw = useCallback((ctx: CanvasRenderingContext2D) => {
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        ctx.fillStyle = "red";
+        ctx.beginPath();
+        ctx.arc(targetRef.current.x, targetRef.current.y, targetRef.current.size, 0, Math.PI * 2);
+        ctx.fill();
+        animationFrameId.current = requestAnimationFrame(() => draw(ctx));
     }, []);
 
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
+        const context = canvas.getContext('2d');
+        if (!context) return;
         
-        const handleMouseMove = (e: MouseEvent) => {
-            if (playerRef.current && !gameOver) {
-                const rect = canvas.getBoundingClientRect();
-                playerRef.current.x = e.clientX - rect.left;
+        draw(context);
+
+        const handleClick = (e: MouseEvent) => {
+            const rect = canvas.getBoundingClientRect();
+            const dx = (e.clientX - rect.left) - targetRef.current.x;
+            const dy = (e.clientY - rect.top) - targetRef.current.y;
+            if (Math.sqrt(dx * dx + dy * dy) < targetRef.current.size) {
+                setScore(prev => prev + 1);
+                targetRef.current = {
+                    ...targetRef.current,
+                    x: Math.random() * (canvas.width - targetRef.current.size * 2) + targetRef.current.size,
+                    y: Math.random() * (canvas.height - targetRef.current.size * 2) + targetRef.current.size,
+                };
             }
         };
 
-        resetGame();
-        canvas.addEventListener('mousemove', handleMouseMove);
+        canvas.addEventListener('click', handleClick);
 
         return () => {
-            canvas.removeEventListener('mousemove', handleMouseMove);
-            if(gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
-        }
-    }, [resetGame, gameOver]);
-
-    if (gameOver) {
-        return (
-            <div className="flex flex-col items-center justify-center p-8 text-center bg-teal-100 dark:bg-teal-900/50 rounded-lg h-[400px]">
-                <h3 className="text-2xl font-bold text-teal-800 dark:text-teal-200">Game Over!</h3>
-                <p className="text-xl my-4">You strayed from the path. Your score: <span className="font-bold">{score}</span></p>
-                <Button onClick={resetGame}>Try Again</Button>
-            </div>
-        )
-    }
+            canvas.removeEventListener('click', handleClick);
+            if(animationFrameId.current) cancelAnimationFrame(animationFrameId.current);
+        };
+    }, [draw]);
 
     return (
-        <div className="flex flex-col items-center justify-center p-4 text-center bg-teal-100 dark:bg-teal-900/50 rounded-lg">
-            <h3 className="text-2xl font-bold text-teal-800 dark:text-teal-200">Path to Calm</h3>
-            <p className="text-teal-600 dark:text-teal-300 mb-2">Stay on the path. Score: {score}</p>
-            <canvas ref={canvasRef} width="500" height="350" className="bg-slate-200 dark:bg-slate-800 rounded-md cursor-none"></canvas>
+        <div className="text-center">
+            <h3 className="text-2xl font-bold mb-2">Shooting Game</h3>
+            <p className="text-muted-foreground mb-4">Click the red targets to blast them away!</p>
+            <p className="font-bold text-xl mb-4">Score: {score}</p>
+            <canvas ref={canvasRef} width="400" height="400" className="mx-auto block border rounded-md bg-slate-100 dark:bg-slate-800" />
         </div>
     );
 };
 
+// Game: Sad Pop
+const SadPop = () => {
+    const gameAreaRef = useRef<HTMLDivElement>(null);
+    const [score, setScore] = useState(0);
+
+    useEffect(() => {
+        const createBalloon = () => {
+            const gameArea = gameAreaRef.current;
+            if (!gameArea) return;
+
+            const balloon = document.createElement("div");
+            balloon.className = "balloon absolute w-[30px] h-[40px] bg-pink-400 rounded-full cursor-pointer";
+            balloon.style.left = Math.random() * (gameArea.clientWidth - 30) + "px";
+            balloon.style.top = (gameArea.clientHeight - 40) + "px";
+
+            balloon.onclick = () => {
+                setScore(prev => prev + 1);
+                balloon.remove();
+            };
+
+            gameArea.appendChild(balloon);
+
+            let moveUp = setInterval(() => {
+                if (parseInt(balloon.style.top) < -40) {
+                    balloon.remove();
+                    clearInterval(moveUp);
+                } else {
+                    balloon.style.top = parseInt(balloon.style.top) - 2 + "px";
+                }
+            }, 30);
+        };
+
+        const timer = setInterval(createBalloon, 1000);
+
+        return () => {
+            clearInterval(timer);
+            if(gameAreaRef.current) gameAreaRef.current.innerHTML = "";
+        };
+    }, []);
+
+    return (
+        <div className="text-center">
+            <h3 className="text-2xl font-bold mb-2">Balloon Pop</h3>
+            <p className="text-muted-foreground mb-4">Pop the balloons as they float up.</p>
+            <p className="font-bold text-xl mb-4">Score: {score}</p>
+            <div ref={gameAreaRef} className="relative w-full max-w-[400px] h-[400px] border rounded-md mx-auto bg-sky-100 dark:bg-sky-900 overflow-hidden" />
+        </div>
+    );
+};
+
+// Game: Tired Reaction
+const TiredReaction = () => {
+    const [message, setMessage] = useState("Wait for GREEN, then click FAST!");
+    const [bgColor, setBgColor] = useState("bg-red-500");
+    const reactionStartRef = useRef<number | null>(null);
+
+    const startGame = useCallback(() => {
+        setMessage("Wait for GREEN, then click FAST!");
+        setBgColor("bg-red-500");
+        reactionStartRef.current = null;
+
+        const timeoutId = setTimeout(() => {
+            setBgColor("bg-green-500");
+            reactionStartRef.current = Date.now();
+        }, Math.random() * 3000 + 2000);
+
+        return () => clearTimeout(timeoutId);
+    }, []);
+    
+    useEffect(() => {
+        return startGame();
+    }, [startGame]);
+
+    const handleClick = () => {
+        if (reactionStartRef.current) {
+            const reactionTime = Date.now() - reactionStartRef.current;
+            setMessage(`Reaction Time: ${reactionTime} ms`);
+            reactionStartRef.current = null;
+        } else {
+            setMessage("Too soon! Click 'Play Again' to retry.");
+        }
+    };
+
+    return (
+        <div className="text-center">
+            <h3 className="text-2xl font-bold mb-2">Reaction Test</h3>
+            <p className="text-muted-foreground mb-4">{message}</p>
+            <div
+                className={`w-full max-w-[400px] h-[300px] border rounded-md mx-auto flex items-center justify-center cursor-pointer text-white font-bold text-2xl transition-colors ${bgColor}`}
+                onClick={handleClick}
+            >
+                Click Me!
+            </div>
+            <Button onClick={startGame} className="mt-4">Play Again</Button>
+        </div>
+    );
+};
+
+// Game: Happy Memory
+const HappyMemory = () => {
+    const [cards, setCards] = useState<{emoji: string, id: number, flipped: boolean, matched: boolean}[]>([]);
+    const [flipped, setFlipped] = useState<number[]>([]);
+    const [matches, setMatches] = useState(0);
+
+    const initializeGame = useCallback(() => {
+        const emojis = ["😀", "🐶", "🍎", "⚽", "😊", "💖", "🌟", "🎉"];
+        const gameCards = [...emojis, ...emojis]
+            .sort(() => 0.5 - Math.random())
+            .map((emoji, i) => ({ emoji, id: i, flipped: false, matched: false }));
+        setCards(gameCards);
+        setFlipped([]);
+        setMatches(0);
+    }, []);
+
+    useEffect(() => {
+        initializeGame();
+    }, [initializeGame]);
+
+    useEffect(() => {
+        if (flipped.length === 2) {
+            const [firstId, secondId] = flipped;
+            const firstCard = cards.find(c => c.id === firstId);
+            const secondCard = cards.find(c => c.id === secondId);
+
+            if (firstCard && secondCard && firstCard.emoji === secondCard.emoji) {
+                setCards(prev => prev.map(c => (c.id === firstId || c.id === secondId ? { ...c, matched: true } : c)));
+                setMatches(prev => prev + 1);
+                setFlipped([]);
+            } else {
+                setTimeout(() => {
+                    setCards(prev => prev.map(c => (c.id === firstId || c.id === secondId ? { ...c, flipped: false } : c)));
+                    setFlipped([]);
+                }, 1000);
+            }
+        }
+    }, [flipped, cards]);
+
+    const handleCardClick = (id: number) => {
+        if (flipped.length < 2) {
+            const card = cards.find(c => c.id === id);
+            if (card && !card.flipped && !card.matched) {
+                setCards(prev => prev.map(c => (c.id === id ? { ...c, flipped: true } : c)));
+                setFlipped(prev => [...prev, id]);
+            }
+        }
+    };
+
+    return (
+        <div className="text-center">
+            <h3 className="text-2xl font-bold mb-2">Memory Game</h3>
+            <p className="text-muted-foreground mb-4">Find all the matching pairs!</p>
+            <p className="font-bold text-xl mb-4">Matches: {matches}</p>
+            <div className="grid grid-cols-4 gap-4 w-full max-w-sm mx-auto">
+                {cards.map(card => (
+                    <div
+                        key={card.id}
+                        className={`aspect-square flex items-center justify-center rounded-md cursor-pointer text-4xl transition-transform transform-gpu ${card.flipped || card.matched ? 'bg-card rotate-y-180' : 'bg-secondary'}`}
+                        onClick={() => handleCardClick(card.id)}
+                    >
+                        {(card.flipped || card.matched) && card.emoji}
+                    </div>
+                ))}
+            </div>
+             {matches === 8 && <p className="mt-4 text-green-500 font-bold">You found them all!</p>}
+            <Button onClick={initializeGame} className="mt-4">Reset Game</Button>
+        </div>
+    );
+};
+
+const games: Record<string, { component: React.FC; title: string }> = {
+    angry: { component: AngryShooter, title: "Shooting Game" },
+    sad: { component: SadPop, title: "Balloon Pop" },
+    tired: { component: TiredReaction, title: "Reaction Game" },
+    happy: { component: HappyMemory, title: "Memory Game" },
+};
 
 export default function GamesPage() {
-  const [isLoading, setIsLoading] = useState(false);
-  const [suggestion, setSuggestion] = useState<GameSuggestionOutput | null>(null);
-  const [userMood, setUserMood] = useState<string | null>(null);
-  
-  const { toast } = useToast();
-  const searchParams = useSearchParams();
-  const lang = searchParams.get('lang') || 'en';
+    const [selectedGame, setSelectedGame] = useState<string | null>(null);
+    
+    const renderGame = () => {
+        if (!selectedGame || !games[selectedGame]) return <p className="text-center text-muted-foreground">Select a mood to start a game.</p>;
+        const GameComponent = games[selectedGame].component;
+        return <GameComponent />;
+    };
 
-  const fetchSuggestion = useCallback(async (mood: string) => {
-    setIsLoading(true);
-    setSuggestion(null);
-    try {
-      const response = await getGameSuggestion({ mood, language: lang });
-      setSuggestion(response);
-    } catch (error) {
-      console.error(error);
-      toast({
-        variant: 'destructive',
-        title: 'An error occurred',
-        description: 'Failed to get a game suggestion. Please try again.',
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [lang, toast]);
-
-  useEffect(() => {
-    try {
-      const storedMood = localStorage.getItem('userMood');
-      if (storedMood) {
-        setUserMood(storedMood);
-        fetchSuggestion(storedMood);
-      }
-    } catch (error) {
-        console.warn('Could not read mood from localStorage:', error);
-    }
-  }, [fetchSuggestion]);
-
-  const renderGame = () => {
-    if (!suggestion) return null;
-    switch (suggestion.gameId) {
-      case 'breathing':
-        return <BreathingExercise />;
-      case 'gratitude':
-        return <GratitudeWall />;
-      case 'emoji-catch':
-        return <EmojiCatch />;
-      case 'mindful-slice':
-        return <MindfulSlice />;
-      case 'path-to-calm':
-        return <PathToCalm />;
-      default:
-        return null;
-    }
-  };
-
-  return (
-    <div className="space-y-8 animate-in fade-in-50">
-      <Card className="shadow-lg">
-        <CardHeader>
-          <CardTitle className="font-headline text-3xl flex items-center gap-2">
-            <Gamepad2 className="text-primary" />
-            Wellness Games
-          </CardTitle>
-          <CardDescription>
-            Take a short break with a calming activity. We've suggested a game for you based on your current mood.
-            {userMood && <span className="block mt-1">Current detected mood: <strong className="text-primary capitalize">{userMood}</strong></span>}
-          </CardDescription>
-        </CardHeader>
-        {!userMood && (
-            <CardContent>
-                <p className="text-muted-foreground">Visit the Mood Tracker page to get a personalized game suggestion!</p>
-            </CardContent>
-        )}
-      </Card>
-
-      {isLoading && (
-        <Card>
-          <CardContent className="p-6 flex flex-col items-center justify-center space-y-4 min-h-[200px]">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-muted-foreground">Picking the right game for you...</p>
-          </CardContent>
-        </Card>
-      )}
-
-      {suggestion && (
-        <>
-            <Alert className="bg-accent/50 border-accent">
-                <Lightbulb className="h-4 w-4" />
-                <AlertTitle>{suggestion.title}</AlertTitle>
-                <AlertDescription>
-                    {suggestion.description}
-                </AlertDescription>
-            </Alert>
-
-            <Card className="animate-in fade-in-50">
-                <CardContent className="p-4 sm:p-6">
-                    {renderGame()}
+    return (
+        <div className="space-y-8 animate-in fade-in-50">
+            <Card className="shadow-lg">
+                <CardHeader>
+                    <CardTitle className="font-headline text-3xl flex items-center gap-2">
+                        <Gamepad2 className="text-primary" />
+                        Wellness Games
+                    </CardTitle>
+                    <CardDescription>
+                        Take a short break with a calming activity. Select a mood to play a game tailored for it.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="flex flex-col sm:flex-row gap-4 items-center max-w-xs">
+                        <Select onValueChange={setSelectedGame}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select your mood..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="angry">😡 Angry</SelectItem>
+                                <SelectItem value="sad">😢 Sad</SelectItem>
+                                <SelectItem value="tired">😴 Tired</SelectItem>
+                                <SelectItem value="happy">😃 Happy</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </CardContent>
             </Card>
-        </>
-      )}
-    </div>
-  );
+
+            {selectedGame && (
+                <Card className="animate-in fade-in-50">
+                    <CardContent className="p-4 sm:p-6">
+                        {renderGame()}
+                    </CardContent>
+                </Card>
+            )}
+        </div>
+    );
 }
