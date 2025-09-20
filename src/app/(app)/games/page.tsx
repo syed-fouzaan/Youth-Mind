@@ -109,62 +109,65 @@ const EmojiCatch = () => {
   const positiveEmojis = ['😊', '😂', '😍', '🥳', '🤩'];
   const negativeEmojis = ['😡', '😭', '🤢', '💀', '👿'];
   
-  const gameTick = useCallback(() => {
-    if (isGameOverRef.current) return;
-  
-    setEmojis(prev => {
-        let newScore = score;
-        // Move emojis and check for collisions
-        let newEmojis = prev
-            .map(emoji => ({ ...emoji, y: emoji.y + 1 }))
-            .filter(emoji => {
-                if (emoji.y > 100) return false; // remove emoji if it's off screen
-                
-                const catcherRect = { left: catcherX - 5, right: catcherX + 5, top: 85, bottom: 95 };
-                const emojiRect = { left: emoji.x - 2.5, right: emoji.x + 2.5, top: emoji.y - 5, bottom: emoji.y + 5 };
-
-                if (emojiRect.bottom > catcherRect.top && emojiRect.top < catcherRect.bottom && emojiRect.right > catcherRect.left && emojiRect.left < catcherRect.right) {
-                    if (emoji.type === 'positive') {
-                        newScore += 10;
-                    } else {
-                        isGameOverRef.current = true;
-                        setGameOver(true);
-                    }
-                    return false; // remove emoji
-                }
-                return true;
-            });
-            
-        setScore(newScore);
-
-        // Create new emojis
-        if (Math.random() < 0.05) {
-            const type = Math.random() > 0.3 ? 'positive' : 'negative';
-            newEmojis.push({
-                id: Date.now() + Math.random(),
-                x: Math.random() * 90 + 5,
-                y: -5,
-                type,
-                char: type === 'positive'
-                    ? positiveEmojis[Math.floor(Math.random() * positiveEmojis.length)]
-                    : negativeEmojis[Math.floor(Math.random() * negativeEmojis.length)],
-            });
-        }
-        
-        return newEmojis;
-    });
-
-    gameLoopRef.current = requestAnimationFrame(gameTick);
-  }, [catcherX, score]);
-
   const resetGame = useCallback(() => {
     setScore(0);
     setEmojis([]);
     setGameOver(false);
     isGameOverRef.current = false;
+
+    const gameTick = () => {
+      if (isGameOverRef.current) {
+        setGameOver(true);
+        return;
+      }
+  
+      setEmojis(prev => {
+          let newScore = score;
+          // Move emojis and check for collisions
+          let newEmojis = prev
+              .map(emoji => ({ ...emoji, y: emoji.y + 1 }))
+              .filter(emoji => {
+                  if (emoji.y > 100) return false; // remove emoji if it's off screen
+                  
+                  const catcherRect = { left: catcherX - 5, right: catcherX + 5, top: 85, bottom: 95 };
+                  const emojiRect = { left: emoji.x - 2.5, right: emoji.x + 2.5, top: emoji.y - 5, bottom: emoji.y + 5 };
+  
+                  if (emojiRect.bottom > catcherRect.top && emojiRect.top < catcherRect.bottom && emojiRect.right > catcherRect.left && emojiRect.left < catcherRect.right) {
+                      if (emoji.type === 'positive') {
+                          newScore += 10;
+                          setScore(s => s + 10);
+                      } else {
+                          isGameOverRef.current = true;
+                      }
+                      return false; // remove emoji
+                  }
+                  return true;
+              });
+  
+          // Create new emojis
+          if (Math.random() < 0.05) {
+              const type = Math.random() > 0.3 ? 'positive' : 'negative';
+              newEmojis.push({
+                  id: Date.now() + Math.random(),
+                  x: Math.random() * 90 + 5,
+                  y: -5,
+                  type,
+                  char: type === 'positive'
+                      ? positiveEmojis[Math.floor(Math.random() * positiveEmojis.length)]
+                      : negativeEmojis[Math.floor(Math.random() * negativeEmojis.length)],
+              });
+          }
+          
+          return newEmojis;
+      });
+  
+      gameLoopRef.current = requestAnimationFrame(gameTick);
+    };
+
     if(gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
     gameLoopRef.current = requestAnimationFrame(gameTick);
-  }, [gameTick]);
+
+  }, [catcherX, score]);
 
 
   useEffect(() => {
@@ -176,15 +179,16 @@ const EmojiCatch = () => {
       }
     };
     
-    if (gameAreaRef.current) {
-      gameAreaRef.current.addEventListener('mousemove', handleMouseMove);
+    const currentRef = gameAreaRef.current;
+    if (currentRef) {
+      currentRef.addEventListener('mousemove', handleMouseMove);
     }
     resetGame();
 
     return () => {
       if(gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
-      if(gameAreaRef.current) {
-        gameAreaRef.current.removeEventListener('mousemove', handleMouseMove);
+      if(currentRef) {
+        currentRef.removeEventListener('mousemove', handleMouseMove);
       }
     };
   }, [resetGame]);
@@ -214,6 +218,198 @@ const EmojiCatch = () => {
     </div>
   );
 };
+
+const MindfulSlice = () => {
+    const [score, setScore] = useState(0);
+    const [gameOver, setGameOver] = useState(false);
+    const gameAreaRef = useRef<HTMLDivElement>(null);
+    const gameLoopRef = useRef<number>();
+
+    const [items, setItems] = useState<any[]>([]);
+
+    const positiveEmojis = ['😊', '✨', '💖', '🎉', '🌟'];
+    const negativeEmojis = ['😠', '⛈️', '💀', '🔥', '👿'];
+
+    const resetGame = useCallback(() => {
+        setScore(0);
+        setItems([]);
+        setGameOver(false);
+
+        const gameTick = () => {
+            let newItems = items.map(item => ({...item, y: item.y + item.vy, vy: item.vy + 0.05}));
+            newItems = newItems.filter(item => item.y < 110);
+
+            if (Math.random() < 0.08) {
+                const type = Math.random() > 0.4 ? 'negative' : 'positive';
+                newItems.push({
+                    id: Math.random(),
+                    x: Math.random() * 80 + 10,
+                    y: 110,
+                    vy: -3 - Math.random() * 1.5,
+                    vx: Math.random() * 2 - 1,
+                    type: type,
+                    char: type === 'negative' ? negativeEmojis[Math.floor(Math.random() * negativeEmojis.length)] : positiveEmojis[Math.floor(Math.random() * positiveEmojis.length)]
+                });
+            }
+            setItems(newItems);
+            gameLoopRef.current = requestAnimationFrame(gameTick);
+        };
+        if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
+        gameLoopRef.current = requestAnimationFrame(gameTick);
+    }, [items]);
+
+    const handleSlice = (id: any, type: 'positive' | 'negative') => {
+        if(gameOver) return;
+
+        if (type === 'negative') {
+            setScore(s => s + 10);
+            setItems(items.filter(item => item.id !== id));
+        } else {
+            setGameOver(true);
+        }
+    };
+    
+    useEffect(() => {
+        resetGame();
+        return () => {
+            if(gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
+        }
+    }, [resetGame]);
+
+    if (gameOver) {
+      return (
+        <div className="flex flex-col items-center justify-center p-8 text-center bg-red-100 dark:bg-red-900/50 rounded-lg h-[400px]">
+            <h3 className="text-2xl font-bold text-red-800 dark:text-red-200">Game Over!</h3>
+            <p className="text-xl my-4">You sliced a positive thought! Your score: <span className="font-bold">{score}</span></p>
+            <Button onClick={resetGame}>Play Again</Button>
+        </div>
+      )
+    }
+
+    return (
+        <div className="flex flex-col items-center justify-center p-4 text-center bg-purple-100 dark:bg-purple-900/50 rounded-lg">
+            <h3 className="text-2xl font-bold text-purple-800 dark:text-purple-200">Mindful Slice</h3>
+            <p className="text-purple-600 dark:text-purple-300 mb-2">Slice the negative thoughts, avoid the positive ones! Score: {score}</p>
+            <div ref={gameAreaRef} className="relative w-full h-[400px] bg-purple-200 dark:bg-purple-800/50 rounded-md overflow-hidden cursor-crosshair">
+                {items.map(item => (
+                    <div 
+                        key={item.id} 
+                        className="absolute text-5xl cursor-pointer" 
+                        style={{ left: `${item.x}%`, top: `${item.y}%`, transform: 'translate(-50%, -50%)' }}
+                        onMouseEnter={() => handleSlice(item.id, item.type)}
+                    >
+                        {item.char}
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+const PathToCalm = () => {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const [score, setScore] = useState(0);
+    const [gameOver, setGameOver] = useState(false);
+    const gameLoopRef = useRef<number>();
+
+    const resetGame = useCallback(() => {
+        setScore(0);
+        setGameOver(false);
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        let player = { x: canvas.width / 2, y: canvas.height - 30, width: 20, height: 20 };
+        let path: {x: number, width: number}[] = [];
+        let speed = 2;
+        let frame = 0;
+        let localScore = 0;
+
+        for (let i = 0; i < canvas.height; i++) {
+            path.push({ x: canvas.width / 2, width: 80 });
+        }
+
+        const gameTick = () => {
+            frame++;
+            if (frame % 200 === 0) speed += 0.2;
+            
+            // Move path up
+            path.shift();
+            
+            // Add new path segment
+            const lastSegment = path[path.length - 1];
+            let newX = lastSegment.x + (Math.random() - 0.5) * 8;
+            if (newX < 50) newX = 50;
+            if (newX > canvas.width - 50) newX = canvas.width - 50;
+            path.push({x: newX, width: 80});
+            
+            // Player collision
+            const playerPathSegment = path[Math.floor(player.y)];
+            if (player.x < playerPathSegment.x - playerPathSegment.width / 2 || player.x > playerPathSegment.x + playerPathSegment.width / 2) {
+                setGameOver(true);
+                if(gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
+                return;
+            }
+
+            localScore++;
+            setScore(localScore);
+
+            // Draw
+            ctx.fillStyle = '#E0F2F1'; // dark: #004D40
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = '#80CBC4'; // dark: #B2DFDB
+            for (let i = 0; i < path.length; i++) {
+                const seg = path[i];
+                ctx.fillRect(seg.x - seg.width / 2, i, seg.width, 1);
+            }
+            
+            ctx.fillStyle = '#00796B'; // dark: #FFFFFF
+            ctx.fillRect(player.x - player.width / 2, player.y - player.height / 2, player.width, player.height);
+            
+            gameLoopRef.current = requestAnimationFrame(gameTick);
+        };
+        
+        const handleMouseMove = (e: MouseEvent) => {
+            const rect = canvas.getBoundingClientRect();
+            player.x = e.clientX - rect.left;
+        };
+        canvas.addEventListener('mousemove', handleMouseMove);
+
+        if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
+        gameLoopRef.current = requestAnimationFrame(gameTick);
+
+        return () => {
+            canvas.removeEventListener('mousemove', handleMouseMove);
+            if(gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
+        }
+    }, []);
+
+    useEffect(() => {
+        const cleanup = resetGame();
+        return cleanup;
+    }, [resetGame]);
+
+    if (gameOver) {
+        return (
+            <div className="flex flex-col items-center justify-center p-8 text-center bg-teal-100 dark:bg-teal-900/50 rounded-lg h-[400px]">
+                <h3 className="text-2xl font-bold text-teal-800 dark:text-teal-200">Game Over!</h3>
+                <p className="text-xl my-4">You strayed from the path. Your score: <span className="font-bold">{score}</span></p>
+                <Button onClick={resetGame}>Try Again</Button>
+            </div>
+        )
+    }
+
+    return (
+        <div className="flex flex-col items-center justify-center p-4 text-center bg-teal-100 dark:bg-teal-900/50 rounded-lg">
+            <h3 className="text-2xl font-bold text-teal-800 dark:text-teal-200">Path to Calm</h3>
+            <p className="text-teal-600 dark:text-teal-300 mb-2">Stay on the path. Score: {score}</p>
+            <canvas ref={canvasRef} width="500" height="350" className="bg-white dark:bg-gray-800 rounded-md cursor-none"></canvas>
+        </div>
+    );
+};
+
 
 export default function GamesPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -263,6 +459,10 @@ export default function GamesPage() {
         return <GratitudeWall />;
       case 'emoji-catch':
         return <EmojiCatch />;
+      case 'mindful-slice':
+        return <MindfulSlice />;
+      case 'path-to-calm':
+        return <PathToCalm />;
       default:
         return null;
     }
@@ -317,5 +517,3 @@ export default function GamesPage() {
     </div>
   );
 }
-
-    

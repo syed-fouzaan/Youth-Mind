@@ -17,7 +17,9 @@ const GameSuggestionInputSchema = z.object({
 export type GameSuggestionInput = z.infer<typeof GameSuggestionInputSchema>;
 
 const GameSuggestionOutputSchema = z.object({
-  gameId: z.enum(['breathing', 'gratitude', 'emoji-catch']).describe('The ID of the suggested game.'),
+  gameId: z
+    .enum(['breathing', 'gratitude', 'emoji-catch', 'mindful-slice', 'path-to-calm'])
+    .describe('The ID of the suggested game.'),
   title: z.string().describe('The title of the suggested game.'),
   description: z.string().describe('A brief, encouraging description of the game and why it might help.'),
 });
@@ -38,6 +40,8 @@ The available games are:
 - 'breathing': A guided breathing exercise. Good for moods like 'anxious', 'stressed', 'angry'.
 - 'gratitude': A gratitude wall exercise. Good for moods like 'sad', 'low'.
 - 'emoji-catch': A game to catch positive emojis. Good for 'happy', 'neutral', 'bored', 'calm'.
+- 'mindful-slice': A game to slice away negative thoughts. Good for 'stressed', 'angry'.
+- 'path-to-calm': A racing game to improve focus. Good for 'anxious', 'low'.
 
 Based on the user's mood, select one game ID and provide a title and a short, encouraging description for it in the specified language.
 
@@ -57,5 +61,3 @@ const getGameSuggestionFlow = ai.defineFlow(
     return output!;
   }
 );
-
-    
