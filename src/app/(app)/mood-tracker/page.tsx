@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2, Smile, AlertTriangle } from 'lucide-react';
 import { detectMoodFromImage, type FacialMoodDetectionOutput } from '@/ai/flows/facial-mood-detection';
 
@@ -57,6 +56,7 @@ export default function MoodTrackerPage() {
     }, 5000); // Process every 5 seconds
 
     return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasCameraPermission, isProcessing]);
   
   useEffect(() => {
@@ -137,10 +137,10 @@ export default function MoodTrackerPage() {
             )}
             
             {hasCameraPermission === false && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-destructive/10 p-4">
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-destructive/10 p-4 text-center">
                  <AlertTriangle className="h-10 w-10 text-destructive" />
-                 <p className="mt-4 text-center font-semibold text-destructive">Camera access is required.</p>
-                 <p className="text-center text-sm text-destructive/80">Please allow camera permissions in your browser to use the mood tracker.</p>
+                 <p className="mt-4 font-semibold text-destructive">Camera access is required.</p>
+                 <p className="text-sm text-destructive/80">Please enable camera permissions in your browser settings to use this feature.</p>
               </div>
             )}
              {(isProcessing && hasCameraPermission) && (
@@ -151,16 +151,6 @@ export default function MoodTrackerPage() {
             )}
           </div>
           
-          {hasCameraPermission === false && (
-              <Alert variant="destructive" className="max-w-2xl mx-auto">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>Camera Access Required</AlertTitle>
-                <AlertDescription>
-                  This feature needs access to your camera to function. Please enable camera permissions in your browser settings and refresh the page.
-                </AlertDescription>
-              </Alert>
-          )}
-
           {detectedMood && (
             <div className="text-center pt-4 animate-in fade-in">
               <p className="text-muted-foreground">Detected Mood</p>
