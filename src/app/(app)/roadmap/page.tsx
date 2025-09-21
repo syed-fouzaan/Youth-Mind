@@ -10,8 +10,6 @@ import ReactFlow, {
   type Edge,
   type OnNodesChange,
   type OnEdgesChange,
-  type EdgeTypes,
-  type NodeTypes,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
@@ -21,9 +19,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Map, Wand2 } from 'lucide-react';
+import { Loader2, Map, Wand2, Lightbulb, CheckCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const initialNodes: Node[] = [];
 const initialEdges: Edge[] = [];
@@ -33,6 +32,7 @@ export default function RoadmapPage() {
   const [edges, setEdges] = useState<Edge[]>(initialEdges);
   const [interests, setInterests] = useState('');
   const [skills, setSkills] = useState('');
+  const [avoid, setAvoid] = useState('');
   const [roadmap, setRoadmap] = useState<GenerateRoadmapOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -57,6 +57,7 @@ export default function RoadmapPage() {
       const response = await generateRoadmap({
         interests: interests.split(',').map(s => s.trim()),
         skills: skills.split(',').map(s => s.trim()),
+        avoid: avoid.split(',').map(s => s.trim()).filter(s => s),
       });
       
       setRoadmap(response);
@@ -84,14 +85,14 @@ export default function RoadmapPage() {
         <CardHeader>
           <CardTitle className="font-headline text-3xl flex items-center gap-2">
             <Map className="text-primary" />
-            AI Career Roadmap
+            AI Career Navigator
           </CardTitle>
           <CardDescription>
-            Feeling lost? Tell our AI about your interests and skills to get a personalized career and education plan.
+            Feeling lost? Describe your interests, skills, and what you want to avoid, and our AI will chart a personalized career path for you.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="interests">Your Interests</Label>
               <Input
@@ -109,6 +110,16 @@ export default function RoadmapPage() {
                 placeholder="e.g., communication, basic math"
                 value={skills}
                 onChange={(e) => setSkills(e.target.value)}
+                disabled={isLoading}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="avoid">Things to Avoid (Optional)</Label>
+              <Input
+                id="avoid"
+                placeholder="e.g., long medical school, intense sales"
+                value={avoid}
+                onChange={(e) => setAvoid(e.target.value)}
                 disabled={isLoading}
               />
             </div>
@@ -145,6 +156,16 @@ export default function RoadmapPage() {
             <CardDescription>Here are the top career tracks we recommend for you. The first one is visualized below.</CardDescription>
           </CardHeader>
           <CardContent>
+            {roadmap.explanation && (
+                <Alert className="mb-6 bg-accent/50 border-accent">
+                    <Lightbulb className="h-4 w-4" />
+                    <AlertTitle>Why this roadmap?</AlertTitle>
+                    <AlertDescription>
+                        {roadmap.explanation}
+                    </AlertDescription>
+                </Alert>
+            )}
+
             <div className="w-full h-[500px] border rounded-lg bg-muted/30">
               <ReactFlow
                 nodes={nodes}
@@ -158,23 +179,42 @@ export default function RoadmapPage() {
               </ReactFlow>
             </div>
             
-            <Accordion type="single" collapsible className="w-full mt-6">
+            <Accordion type="single" collapsible className="w-full mt-6" defaultValue={roadmap.tracks[0]?.id}>
                 {roadmap.tracks.map((track) => (
                     <AccordionItem value={track.id} key={track.id}>
                         <AccordionTrigger>
-                            <div className="flex justify-between w-full pr-4 items-center">
-                                <span className="text-lg font-semibold">{track.name}</span>
+                            <div className="flex justify-between w-full pr-4 items-center gap-4">
+                                <span className="text-lg font-semibold text-left">{track.name}</span>
                                 <Badge>Confidence: {(track.confidence * 100).toFixed(0)}%</Badge>
                             </div>
                         </AccordionTrigger>
-                        <AccordionContent className="p-4 bg-secondary/30 rounded-b-md">
-                            <ol className="list-decimal list-inside space-y-4">
+                        <AccordionContent className="p-4 bg-secondary/30 rounded-b-md space-y-4">
+                           <div className="flex flex-wrap gap-2">
+                             <p className="text-sm font-semibold">Skills Targeted:</p>
+                             {track.skillsTargeted.map(skill => <Badge variant="secondary" key={skill}>{skill}</Badge>)}
+                           </div>
+                           <div className="flex flex-wrap gap-2">
+                             <p className="text-sm font-semibold">Career Outcomes:</p>
+                             {track.careerOutcomes.map(outcome => <Badge variant="outline" key={outcome}>{outcome}</Badge>)}
+                           </div>
+                           
+                           <h4 className="font-bold pt-4 text-md">Learning Steps:</h4>
+                            <ol className="relative border-l border-gray-400 dark:border-gray-700 ml-2">
                                 {track.steps.map(step => (
-                                    <li key={step.id} className="ml-4">
-                                        <strong className="font-semibold">{step.title}</strong>
-                                        <p className="text-sm text-muted-foreground">Duration: {step.durationWeeks} weeks</p>
-                                        <p className="text-sm text-muted-foreground">Resources: {step.resources.join(', ')}</p>
-                                        {step.dependencies && step.dependencies.length > 0 && <p className="text-sm text-muted-foreground">Requires: {step.dependencies.join(', ')}</p>}
+                                    <li key={step.id} className="mb-10 ml-6">
+                                        <span className="absolute flex items-center justify-center w-6 h-6 bg-blue-100 rounded-full -left-3 ring-8 ring-white dark:ring-gray-900 dark:bg-blue-900">
+                                            <CheckCircle className="w-4 h-4 text-primary" />
+                                        </span>
+                                        <h3 className="flex items-center mb-1 text-lg font-semibold">{step.title}</h3>
+                                        <time className="block mb-2 text-sm font-normal leading-none text-muted-foreground">Duration: {step.durationWeeks} weeks</time>
+                                        <p className="mb-4 text-sm text-muted-foreground">Resources: {step.resources.join(', ')}</p>
+                                        <div>
+                                            <h5 className="font-semibold text-sm mb-1">Micro-Actions:</h5>
+                                            <ul className="list-disc list-inside text-sm space-y-1">
+                                                {step.microActions.map((action, i) => <li key={i}>{action}</li>)}
+                                            </ul>
+                                        </div>
+                                        {step.dependencies && step.dependencies.length > 0 && <p className="mt-2 text-xs text-muted-foreground">Requires: {track.steps.find(s => s.id === step.dependencies![0])?.title || step.dependencies.join(', ')}</p>}
                                     </li>
                                 ))}
                             </ol>
