@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef, useEffect } from 'react';
@@ -34,15 +35,23 @@ export default function ChatPage() {
     if (inputText.trim() === '') return;
 
     const userMessage: ConversationEntry = { role: 'user', content: [{text: inputText}] };
+    
+    // Immediately update the UI with the user's message
     const newConversation = [...conversation, userMessage];
     setConversation(newConversation);
     setInputText('');
     setIsLoading(true);
     
     try {
-      const response = await counselorChat({ text: userMessage.content[0].text, language: lang, history: conversation as Message[] });
+      // Pass the entire conversation history to the AI
+      const response = await counselorChat({ 
+          text: userMessage.content[0].text, 
+          language: lang, 
+          history: conversation as Message[] 
+      });
       
       const aiMessage: ConversationEntry = { role: 'model', content: [{text: response.response}] };
+      // Update the conversation with the AI's response
       setConversation(prev => [...prev, aiMessage]);
 
     } catch (error) {
@@ -52,7 +61,7 @@ export default function ChatPage() {
         title: 'An error occurred',
         description: 'Failed to get a response. Please try again.',
       });
-      // remove the user message if the AI fails to respond
+      // If the AI fails, remove the user's last message to allow them to try again.
       setConversation(prev => prev.slice(0, -1));
     } finally {
       setIsLoading(false);

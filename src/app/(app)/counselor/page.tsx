@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Sparkles, Mic, Square, AlertTriangle } from 'lucide-react';
-import { counselorChatWithVoice, type CounselorChatWithVoiceOutput } from '@/ai/flows/voice-counselor-chat';
+import { counselorChatWithVoice } from '@/ai/flows/voice-counselor-chat';
 import {type Message} from 'genkit';
 
 
