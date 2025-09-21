@@ -62,7 +62,7 @@ export default function ArtTherapyPage() {
       toast({
         variant: 'destructive',
         title: 'An error occurred',
-        description: 'Failed to generate art. Please try again.',
+        description: 'Failed to find an image. Please try again.',
       });
     } finally {
       setIsLoading(false);
@@ -78,7 +78,7 @@ export default function ArtTherapyPage() {
             AI Art Therapy
           </CardTitle>
           <CardDescription>
-            Express your feelings through art. Describe what's on your mind, and let our AI create a unique image that represents your emotions.
+            Express your feelings through art. Describe what's on your mind, and let our AI find a unique image that represents your emotions.
             {userMood && <span className="block mt-1">Current detected mood: <strong className="text-primary capitalize">{userMood}</strong></span>}
           </CardDescription>
         </CardHeader>
@@ -98,12 +98,12 @@ export default function ArtTherapyPage() {
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Creating...
+                Searching...
               </>
             ) : (
               <>
                 <Sparkles className="mr-2 h-4 w-4" />
-                Generate Art
+                Find Art
               </>
             )}
           </Button>
@@ -114,8 +114,7 @@ export default function ArtTherapyPage() {
         <Card>
           <CardContent className="p-6 flex flex-col items-center justify-center space-y-4 min-h-[300px]">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-muted-foreground">The AI is painting your vision...</p>
-            <p className="text-sm text-muted-foreground">(This can take up to 30 seconds)</p>
+            <p className="text-muted-foreground">The AI is searching for your vision...</p>
           </CardContent>
         </Card>
       )}
@@ -124,13 +123,13 @@ export default function ArtTherapyPage() {
         <Card className="animate-in fade-in-50">
           <CardHeader>
             <CardTitle className="font-headline">Your Mood-Art</CardTitle>
-            <CardDescription>Here is the visual representation of your feelings. Right-click to save.</CardDescription>
+            <CardDescription>Here is a visual representation of your feelings.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="relative aspect-square w-full max-w-2xl mx-auto bg-muted rounded-lg overflow-hidden border">
                 <Image
                     src={generatedArt.imageUrl}
-                    alt="Generated mood art"
+                    alt={generatedArt.altText}
                     fill
                     className="object-contain"
                 />

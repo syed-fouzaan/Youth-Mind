@@ -1,6 +1,6 @@
 'use server';
 /**
- * @fileOverview A flow that generates art based on a user's mood and a descriptive prompt.
+ * @fileOverview A flow that finds a relevant image based on a user's mood and a descriptive prompt.
  *
  * - generateMoodArt - A function that handles the mood art generation process.
  * - GenerateMoodArtInput - The input type for the generateMoodArt function.
@@ -18,7 +18,8 @@ const GenerateMoodArtInputSchema = z.object({
 export type GenerateMoodArtInput = z.infer<typeof GenerateMoodArtInputSchema>;
 
 const GenerateMoodArtOutputSchema = z.object({
-  imageUrl: z.string().describe('The data URI of the generated image.'),
+  imageUrl: z.string().url().describe('The URL of a relevant, royalty-free image from Unsplash.'),
+  altText: z.string().describe('A descriptive alt text for the image.'),
 });
 export type GenerateMoodArtOutput = z.infer<typeof GenerateMoodArtOutputSchema>;
 
@@ -33,19 +34,21 @@ const generateMoodArtFlow = ai.defineFlow(
     outputSchema: GenerateMoodArtOutputSchema,
   },
   async input => {
-    const fullPrompt = `Generate a piece of digital art that visually represents the feeling of '${input.mood}'. The user has provided the following creative direction: '${input.prompt}'. The art should be abstract, visually striking, and suitable for a youth audience.`;
+    const {output} = await ai.generate({
+      prompt: `Find a royalty-free image from Unsplash that visually represents the feeling of '${input.mood}' combined with the creative direction: '${input.prompt}'.
 
-    const {media} = await ai.generate({
-      model: 'googleai/imagen-4.0-fast-generate-001',
-      prompt: fullPrompt,
+      Your response should be a JSON object containing the direct image URL and descriptive alt text.
+      The image URL should be in the format: https://images.unsplash.com/photo-<PHOTO_ID>?...
+      For example: { "imageUrl": "https://images.unsplash.com/photo-1518837695005-2083093ee35b?...", "altText": "A serene forest path after rain" }`,
+      output: {
+        schema: GenerateMoodArtOutputSchema,
+      },
     });
 
-    if (!media.url) {
-      throw new Error('Image generation failed to produce an image.');
+    if (!output) {
+      throw new Error('Image suggestion failed to produce a result.');
     }
 
-    return {
-      imageUrl: media.url,
-    };
+    return output;
   }
 );
