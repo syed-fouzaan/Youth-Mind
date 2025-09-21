@@ -1,9 +1,14 @@
+
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { getGameSuggestion, type GameSuggestionOutput } from '@/ai/flows/game-suggestion';
+import { Loader2, Wand2 } from 'lucide-react';
+import Link from 'next/link';
 
 // --- GAME COMPONENTS ---
 
@@ -249,48 +254,112 @@ const HappyMemory = () => {
     );
 };
 
+// --- Main Page Component ---
 
-const games: Record<string, { component: React.FC; title: string }> = {
-    angry: { component: AngryShooter, title: "Shooting Game" },
-    sad: { component: SadPop, title: "Balloon Pop" },
-    tired: { component: TiredReaction, title: "Reaction Test" },
-    neutral: { component: TiredReaction, title: "Reaction Test" },
-    happy: { component: HappyMemory, title: "Memory Game" },
-    surprise: { component: HappyMemory, title: "Memory Game" },
+const gameMap: Record<string, { component: React.FC; label: string }> = {
+    shooter: { component: AngryShooter, label: '😡 Angry → Shooting Game' },
+    balloon: { component: SadPop, label: '😢 Sad → Balloon Pop' },
+    reaction: { component: TiredReaction, label: '😴 Tired → Reaction Test' },
+    memory: { component: HappyMemory, label: '😃 Happy → Memory Game' },
+    breathing: { component: () => <p>Breathing exercise coming soon!</p>, label: 'Anxious -> Breathing' },
+    gratitude: { component: () => <p>Gratitude exercise coming soon!</p>, label: 'Low -> Gratitude Wall' }
 };
 
-export default function GamesPage() {
-    const [selectedMood, setSelectedMood] = useState<string>('happy');
+const gameMoodMapping: Record<string, string> = {
+    happy: 'memory',
+    sad: 'balloon',
+    angry: 'shooter',
+    anxious: 'breathing',
+    stressed: 'shooter',
+    tired: 'reaction',
+    neutral: 'memory',
+    surprise: 'memory'
+}
 
-    const GameComponent = games[selectedMood]?.component || HappyMemory;
+
+export default function GamesPage() {
+    const [userMood, setUserMood] = useState<string | null>(null);
+    const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+
+    const searchParams = useSearchParams();
+    const lang = searchParams.get('lang') || 'en';
+
+    useEffect(() => {
+        try {
+            const storedMood = localStorage.getItem('userMood');
+            if (storedMood) {
+                setUserMood(storedMood);
+                const gameIdForMood = gameMoodMapping[storedMood.toLowerCase()];
+                if (gameIdForMood) {
+                    setSelectedGameId(gameIdForMood);
+                } else {
+                    setSelectedGameId('memory'); // Default to memory game
+                }
+            } else {
+                setSelectedGameId('memory'); // Default if no mood
+            }
+        } catch (error) {
+            console.warn('Could not read mood from localStorage:', error);
+            setSelectedGameId('memory'); // Default on error
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
+    const GameComponent = selectedGameId ? gameMap[selectedGameId]?.component : null;
+
+    if (isLoading) {
+        return (
+            <div className="flex justify-center items-center h-64">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        )
+    }
 
     return (
         <div className="space-y-8 animate-in fade-in-50">
             <Card className="shadow-lg">
                 <CardHeader>
                     <CardTitle className="font-headline text-3xl">Wellness Games</CardTitle>
-                    <CardDescription>Select a mood to play a game designed to help you feel better.</CardDescription>
+                    {userMood ? (
+                        <CardDescription>We've suggested a game for your current mood: <strong className="capitalize text-primary">{userMood}</strong>. You can also choose another one.</CardDescription>
+                    ) : (
+                         <CardDescription>Select a mood to play a game designed to help you feel better.</CardDescription>
+                    )}
                 </CardHeader>
-                <CardContent>
-                    <Select onValueChange={setSelectedMood} defaultValue={selectedMood}>
+                <CardContent className="space-y-4">
+                    <Select onValueChange={setSelectedGameId} value={selectedGameId ?? ''}>
                       <SelectTrigger className="w-full sm:w-[280px]">
-                        <SelectValue placeholder="Select a mood..." />
+                        <SelectValue placeholder="Select a game..." />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="happy">😃 Happy → Memory Game</SelectItem>
-                        <SelectItem value="sad">😢 Sad → Balloon Pop</SelectItem>
-                        <SelectItem value="angry">😡 Angry → Shooting Game</SelectItem>
-                        <SelectItem value="tired">😴 Tired → Reaction Test</SelectItem>
+                        {Object.entries(gameMap).map(([id, { label }]) => (
+                            <SelectItem key={id} value={id}>{label}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
+                     {!userMood && (
+                        <div className="flex items-center gap-4 pt-2">
+                             <p className="text-sm text-muted-foreground">Or, get a personalized suggestion:</p>
+                             <Link href="/mood-tracker">
+                                <Button variant="outline">
+                                    <Wand2 className="mr-2 h-4 w-4" />
+                                    Go to Mood Tracker
+                                </Button>
+                            </Link>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 
             <Card className="animate-in fade-in-50">
-                <CardContent className="p-4 sm:p-6">
-                    <GameComponent />
+                <CardContent className="p-4 sm:p-6 min-h-[500px] flex items-center justify-center">
+                    {GameComponent ? <GameComponent /> : <p>Please select a game to start.</p>}
                 </CardContent>
             </Card>
         </div>
     );
 }
+
+    
