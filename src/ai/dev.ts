@@ -11,3 +11,4 @@ import '@/ai/flows/voice-counselor-chat.ts';
 import '@/ai/flows/mood-art.ts';
 import '@/ai/flows/game-suggestion.ts';
 import '@/ai/flows/moderate-text.ts';
+import '@/ai/flows/career-roadmap.ts';
