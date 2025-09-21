@@ -3,9 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Gamepad2, Loader2, AlertTriangle } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { detectMoodFromImage, type FacialMoodDetectionOutput } from '@/ai/flows/facial-mood-detection';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // --- GAME COMPONENTS ---
 
@@ -251,182 +249,48 @@ const HappyMemory = () => {
     );
 };
 
-// Map moods to games
+
 const games: Record<string, { component: React.FC; title: string }> = {
     angry: { component: AngryShooter, title: "Shooting Game" },
     sad: { component: SadPop, title: "Balloon Pop" },
-    tired: { component: TiredReaction, title: "Reaction Game" },
-    neutral: { component: TiredReaction, title: "Reaction Game" },
+    tired: { component: TiredReaction, title: "Reaction Test" },
+    neutral: { component: TiredReaction, title: "Reaction Test" },
     happy: { component: HappyMemory, title: "Memory Game" },
     surprise: { component: HappyMemory, title: "Memory Game" },
-    // Default game
-    default: { component: HappyMemory, title: "Memory Game" }
 };
 
-
 export default function GamesPage() {
-    const [selectedGame, setSelectedGame] = useState<string | null>(null);
-    const [detectedMood, setDetectedMood] = useState<string | null>(null);
-    const [isProcessing, setIsProcessing] = useState(false);
-    const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+    const [selectedMood, setSelectedMood] = useState<string>('happy');
 
-    const videoRef = useRef<HTMLVideoElement>(null);
-    const canvasRef = useRef<HTMLCanvasElement>(null);
-    const { toast } = useToast();
-
-    // Get camera permission
-    useEffect(() => {
-        const getCameraPermission = async () => {
-          if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            setHasCameraPermission(false);
-            return;
-          }
-          try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            setHasCameraPermission(true);
-            if (videoRef.current) {
-              videoRef.current.srcObject = stream;
-            }
-          } catch (error) {
-            console.error('Error accessing camera:', error);
-            setHasCameraPermission(false);
-          }
-        };
-    
-        getCameraPermission();
-        
-        return () => {
-          if (videoRef.current && videoRef.current.srcObject) {
-            const stream = videoRef.current.srcObject as MediaStream;
-            stream.getTracks().forEach(track => track.stop());
-          }
-        }
-    
-      }, []);
-
-    // Game logic based on mood
-    useEffect(() => {
-        if (detectedMood) {
-            const gameKey = Object.keys(games).includes(detectedMood) ? detectedMood : 'default';
-            if(gameKey !== selectedGame) {
-                setSelectedGame(gameKey);
-            }
-        }
-    }, [detectedMood, selectedGame]);
-
-    // Mood detection interval
-    useEffect(() => {
-        const interval = setInterval(() => {
-          if (videoRef.current && hasCameraPermission && !isProcessing) {
-            captureAndProcessFrame();
-          }
-        }, 3000); // Process every 3 seconds
-    
-        return () => clearInterval(interval);
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      }, [hasCameraPermission, isProcessing]);
-
-    async function captureAndProcessFrame() {
-        if (!videoRef.current || !canvasRef.current) return;
-        setIsProcessing(true);
-    
-        const video = videoRef.current;
-        const canvas = canvasRef.current;
-        const context = canvas.getContext('2d');
-    
-        if (!context) {
-          setIsProcessing(false);
-          return;
-        }
-    
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
-        const imageDataUri = canvas.toDataURL('image/jpeg');
-    
-        try {
-          const result: FacialMoodDetectionOutput = await detectMoodFromImage({ imageDataUri });
-          if (result && result.mood) {
-            setDetectedMood(result.mood.toLowerCase());
-          }
-        } catch (error) {
-          console.error('Mood detection error:', error);
-          toast({
-            variant: 'destructive',
-            title: 'Mood Detection Failed',
-            description: 'Could not analyze your expression.',
-          });
-        } finally {
-          setIsProcessing(false);
-        }
-      }
-
-    const renderGame = () => {
-        if (!selectedGame || !games[selectedGame]) {
-            return (
-                <div className="flex flex-col items-center justify-center text-center text-muted-foreground h-64">
-                    <p>Detecting your mood to select a game...</p>
-                    <p className="text-sm">Please allow camera access.</p>
-                </div>
-            )
-        }
-        const GameComponent = games[selectedGame].component;
-        return <GameComponent />;
-    };
+    const GameComponent = games[selectedMood]?.component || HappyMemory;
 
     return (
         <div className="space-y-8 animate-in fade-in-50">
             <Card className="shadow-lg">
                 <CardHeader>
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                        <div className="flex-grow">
-                            <CardTitle className="font-headline text-3xl flex items-center gap-2">
-                                <Gamepad2 className="text-primary" />
-                                Auto Wellness Games
-                            </CardTitle>
-                            <CardDescription>
-                                Our AI detects your mood and selects a game to match. Smile for a surprise!
-                            </CardDescription>
-                        </div>
-                        <div className="relative w-48 h-36 bg-muted rounded-lg overflow-hidden border">
-                            <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
-                            <canvas ref={canvasRef} className="hidden"></canvas>
-                            {hasCameraPermission === false && (
-                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-destructive/10 p-2 text-center text-xs">
-                                    <AlertTriangle className="h-6 w-6 text-destructive mb-1" />
-                                    <p className="font-semibold text-destructive">Camera access needed.</p>
-                                </div>
-                            )}
-                            {hasCameraPermission === null && (
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                    <CardTitle className="font-headline text-3xl">Wellness Games</CardTitle>
+                    <CardDescription>Select a mood to play a game designed to help you feel better.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div className="text-center p-2 rounded-lg bg-secondary">
-                        <p className="text-sm text-muted-foreground">Current Status</p>
-                        {isProcessing ? (
-                             <p className="font-semibold flex items-center justify-center gap-2">
-                                <Loader2 className="h-4 w-4 animate-spin"/> Detecting Mood...
-                            </p>
-                        ) : (
-                            <p className="font-semibold capitalize">{detectedMood || 'Waiting for camera'}</p>
-                        )}
-                    </div>
+                    <Select onValueChange={setSelectedMood} defaultValue={selectedMood}>
+                      <SelectTrigger className="w-full sm:w-[280px]">
+                        <SelectValue placeholder="Select a mood..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="happy">😃 Happy → Memory Game</SelectItem>
+                        <SelectItem value="sad">😢 Sad → Balloon Pop</SelectItem>
+                        <SelectItem value="angry">😡 Angry → Shooting Game</SelectItem>
+                        <SelectItem value="tired">😴 Tired → Reaction Test</SelectItem>
+                      </SelectContent>
+                    </Select>
                 </CardContent>
             </Card>
 
             <Card className="animate-in fade-in-50">
                 <CardContent className="p-4 sm:p-6">
-                    {renderGame()}
+                    <GameComponent />
                 </CardContent>
             </Card>
         </div>
     );
 }
-
-    
