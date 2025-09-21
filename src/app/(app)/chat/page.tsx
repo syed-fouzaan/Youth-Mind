@@ -10,16 +10,20 @@ import { Loader2, MessageCircle, Send } from 'lucide-react';
 import { counselorChat, type CounselorChatOutput } from '@/ai/flows/counselor-chat';
 import { Input } from '@/components/ui/input';
 import {type Message} from 'genkit';
+import { CrisisDialog } from '@/components/crisis-dialog';
 
 type ConversationEntry = {
   role: 'user' | 'model';
   content: { text: string }[];
 }
 
+const crisisKeywords = ["suicidal", "self-harm", "can't go on", "end my life", "kill myself"];
+
 export default function ChatPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [conversation, setConversation] = useState<ConversationEntry[]>([]);
   const [inputText, setInputText] = useState('');
+  const [showCrisisDialog, setShowCrisisDialog] = useState(false);
   
   const conversationEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -30,9 +34,19 @@ export default function ChatPage() {
   useEffect(() => {
     conversationEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [conversation]);
+  
+  const checkForCrisis = (text: string) => {
+    const lowercasedText = text.toLowerCase();
+    return crisisKeywords.some(keyword => lowercasedText.includes(keyword));
+  };
 
   const handleSendMessage = async () => {
     if (inputText.trim() === '') return;
+    
+    if (checkForCrisis(inputText)) {
+      setShowCrisisDialog(true);
+      return;
+    }
 
     const userMessage: ConversationEntry = { role: 'user', content: [{text: inputText}] };
     
@@ -70,6 +84,7 @@ export default function ChatPage() {
 
   return (
     <div className="h-[85vh] flex flex-col animate-in fade-in-50">
+      <CrisisDialog open={showCrisisDialog} onOpenChange={setShowCrisisDialog} />
       <Card className="shadow-lg flex-grow flex flex-col">
         <CardHeader>
           <CardTitle className="font-headline text-3xl flex items-center gap-2">

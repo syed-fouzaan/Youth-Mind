@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, Sparkles, Mic, Square, AlertTriangle } from 'lucide-react';
 import { counselorChatWithVoice } from '@/ai/flows/voice-counselor-chat';
 import {type Message} from 'genkit';
+import { CrisisDialog } from '@/components/crisis-dialog';
 
 
 type DisplayableMessage = {
@@ -17,11 +18,14 @@ type DisplayableMessage = {
     tone?: string;
 }
 
+const crisisKeywords = ["suicidal", "self-harm", "can't go on", "end my life", "kill myself"];
+
 export default function CounselorPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [conversation, setConversation] = useState<DisplayableMessage[]>([]);
   const [isRecording, setIsRecording] = useState(false);
   const [hasMicrophonePermission, setHasMicrophonePermission] = useState<boolean | null>(null);
+  const [showCrisisDialog, setShowCrisisDialog] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -59,6 +63,11 @@ export default function CounselorPage() {
   useEffect(() => {
     conversationEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [conversation]);
+
+  const checkForCrisis = (text: string) => {
+    const lowercasedText = text.toLowerCase();
+    return crisisKeywords.some(keyword => lowercasedText.includes(keyword));
+  };
 
 
   const handleStartRecording = async () => {
@@ -119,6 +128,12 @@ export default function CounselorPage() {
 
         const response = await counselorChatWithVoice({ audioDataUri: base64Audio, language: lang, history });
         
+        if (checkForCrisis(response.userTranscript)) {
+          setShowCrisisDialog(true);
+          setIsLoading(false);
+          return;
+        }
+        
         const userMessage: DisplayableMessage = {
           role: 'user',
           text: response.userTranscript,
@@ -151,6 +166,7 @@ export default function CounselorPage() {
 
   return (
     <div className="space-y-8 animate-in fade-in-50">
+      <CrisisDialog open={showCrisisDialog} onOpenChange={setShowCrisisDialog} />
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="font-headline text-3xl flex items-center gap-2">
