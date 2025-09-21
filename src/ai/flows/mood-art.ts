@@ -36,15 +36,25 @@ const generateMoodArtFlow = ai.defineFlow(
     outputSchema: GenerateMoodArtOutputSchema,
   },
   async input => {
-    // Generate a unique seed from the prompt to get a consistent image for the same text
-    const seed = input.prompt.split(' ').join('-');
+    // 1. Create a detailed prompt for the image generation model.
+    const fullPrompt = `Generate a piece of digital art that visually represents the feeling of '${input.mood}'. The user has provided the following creative direction: '${input.prompt}'. The art should be abstract, visually striking, and suitable for a youth audience.`;
 
-    // Use a reliable placeholder service to avoid quota issues and invalid URLs
-    const imageUrl = `https://picsum.photos/seed/${seed}/600/400`;
+    // 2. Call the image generation model.
+    const {media} = await ai.generate({
+      model: 'googleai/imagen-4.0-fast-generate-001',
+      prompt: fullPrompt,
+    });
+    
+    const imageUrl = media?.url;
 
+    if (!imageUrl) {
+        throw new Error("Image generation failed. The model did not return an image.");
+    }
+
+    // 3. Return the image URL and alt text.
     return {
       imageUrl: imageUrl,
-      altText: `AI-selected art representing: ${input.mood} - ${input.prompt}`,
+      altText: `AI-generated art representing: ${input.mood} - ${input.prompt}`,
     };
   }
 );
