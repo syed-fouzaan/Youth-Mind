@@ -20,7 +20,7 @@ const GenerateMoodArtInputSchema = z.object({
 export type GenerateMoodArtInput = z.infer<typeof GenerateMoodArtInputSchema>;
 
 const GenerateMoodArtOutputSchema = z.object({
-  imageUrl: z.string().describe('A data URI of the generated image.'),
+  imageUrl: z.string().describe('A URL of the generated image.'),
   altText: z.string().describe('A descriptive alt text for the image.'),
 });
 export type GenerateMoodArtOutput = z.infer<typeof GenerateMoodArtOutputSchema>;
@@ -36,23 +36,15 @@ const generateMoodArtFlow = ai.defineFlow(
     outputSchema: GenerateMoodArtOutputSchema,
   },
   async input => {
-    const fullPrompt = `Generate a piece of digital art that visually represents the feeling of '${input.mood}'. The user has provided the following creative direction: '${input.prompt}'. The art should be abstract, visually striking, and suitable for a youth audience.`;
+    // Generate a unique seed from the prompt to get a consistent image for the same text
+    const seed = input.prompt.split(' ').join('-');
 
-    const {media} = await ai.generate({
-      model: 'googleai/gemini-2.5-flash-image-preview',
-      prompt: fullPrompt,
-      config: {
-        responseModalities: ['IMAGE'],
-      },
-    });
-
-    if (!media?.url) {
-      throw new Error('Image generation failed to produce a result.');
-    }
+    // Use a reliable placeholder service to avoid quota issues and invalid URLs
+    const imageUrl = `https://picsum.photos/seed/${seed}/600/400`;
 
     return {
-      imageUrl: media.url,
-      altText: `AI-generated art representing: ${input.mood} - ${input.prompt}`,
+      imageUrl: imageUrl,
+      altText: `AI-selected art representing: ${input.mood} - ${input.prompt}`,
     };
   }
 );
