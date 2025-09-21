@@ -6,11 +6,134 @@ import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getGameSuggestion, type GameSuggestionOutput } from '@/ai/flows/game-suggestion';
 import { Loader2, Wand2 } from 'lucide-react';
 import Link from 'next/link';
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
 
 // --- GAME COMPONENTS ---
+
+// Game: Breathing Exercise
+const BreathingExercise = () => {
+    const [instruction, setInstruction] = useState("Get Ready...");
+    const [isResting, setIsResting] = useState(true);
+    const circleRef = useRef<HTMLDivElement>(null);
+    const instructionRef = useRef<HTMLDivElement>(null);
+
+    const cycle = [
+        { instruction: "Breathe In", duration: 4000 },
+        { instruction: "Hold", duration: 4000 },
+        { instruction: "Breathe Out", duration: 6000 },
+        { instruction: "Rest", duration: 2000 },
+    ];
+
+    const startBreathing = useCallback(() => {
+        setIsResting(false);
+        let currentStep = 0;
+
+        const nextStep = () => {
+            if (!circleRef.current || !instructionRef.current) return;
+            
+            const step = cycle[currentStep];
+            setInstruction(step.instruction);
+            
+            if (step.instruction === "Breathe In") {
+                circleRef.current.style.transform = "scale(1)";
+            } else if (step.instruction === "Breathe Out") {
+                circleRef.current.style.transform = "scale(0.5)";
+            }
+            
+            currentStep = (currentStep + 1) % cycle.length;
+            setTimeout(nextStep, step.duration);
+        };
+        
+        nextStep();
+
+    }, [cycle]);
+
+
+    return (
+        <div className="text-center flex flex-col items-center justify-center">
+             <h3 className="text-2xl font-bold mb-2">Guided Breathing</h3>
+             <p className="text-muted-foreground mb-4">Follow the circle and instructions to calm your mind.</p>
+             <div className="relative w-[200px] h-[200px] flex items-center justify-center">
+                <div 
+                    ref={circleRef}
+                    className="w-[100px] h-[100px] bg-primary rounded-full transition-transform duration-[4000ms] ease-in-out"
+                    style={{transform: 'scale(0.5)'}}
+                />
+                <div 
+                    ref={instructionRef}
+                    className="absolute text-primary-foreground font-bold"
+                >
+                    {instruction}
+                </div>
+            </div>
+            {isResting && <Button onClick={startBreathing} className="mt-8">Start</Button>}
+        </div>
+    );
+};
+
+
+// Game: Gratitude Wall
+const GratitudeWall = () => {
+    const [entries, setEntries] = useState<string[]>([]);
+    const [newEntry, setNewEntry] = useState('');
+    const { toast } = useToast();
+
+    useEffect(() => {
+        try {
+            const storedEntries = localStorage.getItem('gratitude-entries');
+            if (storedEntries) {
+                setEntries(JSON.parse(storedEntries));
+            }
+        } catch (error) {
+            console.warn("Could not load gratitude entries:", error);
+        }
+    }, []);
+
+    const handleAddEntry = () => {
+        if (!newEntry.trim()) {
+            toast({ variant: 'destructive', title: "Entry can't be empty!"});
+            return;
+        }
+        const updatedEntries = [newEntry, ...entries];
+        setEntries(updatedEntries);
+        setNewEntry('');
+        try {
+            localStorage.setItem('gratitude-entries', JSON.stringify(updatedEntries));
+        } catch(error) {
+            console.warn("Could not save gratitude entry:", error);
+        }
+    };
+
+    return (
+        <div className="text-center w-full max-w-md">
+            <h3 className="text-2xl font-bold mb-2">Gratitude Wall</h3>
+            <p className="text-muted-foreground mb-4">Add something you're grateful for today. Your entries are saved locally on your device.</p>
+            <div className="flex items-center gap-2 mb-6">
+                <Input 
+                    value={newEntry}
+                    onChange={(e) => setNewEntry(e.target.value)}
+                    placeholder="e.g., a sunny day, a good friend..."
+                />
+                <Button onClick={handleAddEntry}>Add</Button>
+            </div>
+            <div className="space-y-3 max-h-[300px] overflow-y-auto p-4 bg-secondary/30 rounded-lg border">
+                {entries.length === 0 ? (
+                    <p className="text-muted-foreground">Your gratitude list is empty. Add something to begin!</p>
+                ) : (
+                    entries.map((entry, index) => (
+                        <Card key={index} className="p-3 text-left bg-background animate-in fade-in-50">
+                            <p>{entry}</p>
+                        </Card>
+                    ))
+                )}
+            </div>
+        </div>
+    );
+};
+
 
 // Game: Angry Shooter
 const AngryShooter = () => {
@@ -261,8 +384,8 @@ const gameMap: Record<string, { component: React.FC; label: string }> = {
     balloon: { component: SadPop, label: '😢 Sad → Balloon Pop' },
     reaction: { component: TiredReaction, label: '😴 Tired → Reaction Test' },
     memory: { component: HappyMemory, label: '😃 Happy → Memory Game' },
-    breathing: { component: () => <p>Breathing exercise coming soon!</p>, label: 'Anxious -> Breathing' },
-    gratitude: { component: () => <p>Gratitude exercise coming soon!</p>, label: 'Low -> Gratitude Wall' }
+    breathing: { component: BreathingExercise, label: '😰 Anxious → Breathing' },
+    gratitude: { component: GratitudeWall, label: '😔 Low → Gratitude Wall' }
 };
 
 const gameMoodMapping: Record<string, string> = {
@@ -273,7 +396,8 @@ const gameMoodMapping: Record<string, string> = {
     stressed: 'shooter',
     tired: 'reaction',
     neutral: 'memory',
-    surprise: 'memory'
+    surprise: 'memory',
+    low: 'gratitude'
 }
 
 
@@ -289,8 +413,9 @@ export default function GamesPage() {
         try {
             const storedMood = localStorage.getItem('userMood');
             if (storedMood) {
-                setUserMood(storedMood);
-                const gameIdForMood = gameMoodMapping[storedMood.toLowerCase()];
+                const mood = storedMood.toLowerCase();
+                setUserMood(mood);
+                const gameIdForMood = gameMoodMapping[mood];
                 if (gameIdForMood) {
                     setSelectedGameId(gameIdForMood);
                 } else {
