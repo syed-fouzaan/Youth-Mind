@@ -131,7 +131,7 @@ export default function ArtTherapyPage() {
                     src={generatedArt.imageUrl}
                     alt={generatedArt.altText}
                     fill
-                    className="object-contain"
+                    className="object-cover"
                 />
             </div>
           </CardContent>
