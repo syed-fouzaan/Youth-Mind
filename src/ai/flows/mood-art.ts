@@ -37,8 +37,9 @@ const generateMoodArtFlow = ai.defineFlow(
     const {output} = await ai.generate({
       prompt: `Find a royalty-free image from Unsplash that visually represents the feeling of '${input.mood}' combined with the creative direction: '${input.prompt}'.
 
-      Your response should be a JSON object containing the direct image URL and descriptive alt text.
-      The image URL should be in the format: https://images.unsplash.com/photo-<PHOTO_ID>?...
+      Your response must be a JSON object containing the direct image URL and descriptive alt text.
+      IMPORTANT: The imageUrl must be a direct, valid, and publicly accessible link to an image file (e.g., ending in .jpg or from images.unsplash.com), not a link to a webpage.
+      The image URL must be in the format: https://images.unsplash.com/photo-<PHOTO_ID>?...
       For example: { "imageUrl": "https://images.unsplash.com/photo-1518837695005-2083093ee35b?...", "altText": "A serene forest path after rain" }`,
       output: {
         schema: GenerateMoodArtOutputSchema,
