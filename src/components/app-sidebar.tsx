@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, BookText, Users, Library, Smile, ListTodo, Sparkles, MessageCircle, Paintbrush, Gamepad2, Map } from 'lucide-react';
+import { Home, BookText, Users, Library, Smile, ListTodo, Sparkles, MessageCircle, Paintbrush, Gamepad2, Map, Star } from 'lucide-react';
 import {
   Sidebar,
   SidebarHeader,
@@ -26,6 +26,7 @@ export function AppSidebar() {
   
   const navItems = [
     { href: '/', icon: <Home />, label: 'Home' },
+    { href: '/features', icon: <Star />, label: 'Features' },
     { href: '/mood-tracker', icon: <Smile />, label: 'Mood Tracker' },
     { href: '/counselor', icon: <Sparkles />, label: 'AI Counselor' },
     { href: '/chat', icon: <MessageCircle />, label: 'Chat' },
@@ -33,7 +34,7 @@ export function AppSidebar() {
     { href: '/journal', icon: <BookText />, label: 'Journal' },
     { href: '/art-therapy', icon: <Paintbrush />, label: 'Art Therapy' },
     { href: '/games', icon: <Gamepad2 />, label: 'Games' },
-    { href: '/support', icon: <Users />, label: 'Peer Support' },
+    { href: ' /support', icon: <Users />, label: 'Peer Support' },
     { href: '/resources', icon: <Library />, label: 'Resources' },
     { href: '/todo', icon: <ListTodo />, label: 'To-Do List' },
   ]
